@@ -8,6 +8,7 @@ import pandas as pd
 from glob import glob
 from tqdm import tqdm
 import argparse
+import random
 
 # Phase mapping
 PHASE_MAPPING = {
@@ -51,7 +52,7 @@ def parse_tool_annotations(tool_file):
     return tool_dict
 
 
-def create_manifest(data_root, output_csv, max_videos=None):
+def create_manifest(data_root, output_csv, max_videos=None, seed=42):
     """
     Create a CSV manifest file with columns:
     frame_path, video_id, frame_id, phase, grasper, bipolar, hook, scissors, clipper, irrigator, specimen_bag
@@ -71,8 +72,11 @@ def create_manifest(data_root, output_csv, max_videos=None):
     
     # Limit number of videos if specified
     if max_videos is not None:
-        video_dirs = video_dirs[:max_videos]
-        print(f"Limiting to first {max_videos} videos")
+        random.seed(seed)  # Set seed for reproducibility
+        video_dirs = random.sample(video_dirs, min(max_videos, len(video_dirs)))
+        video_dirs = sorted(video_dirs)  # Sort for consistent processing order
+        print(f"Randomly selected {len(video_dirs)} videos (seed={seed})")
+        print(f"Selected video IDs: {[int(os.path.basename(v).replace('video', '')) for v in video_dirs]}")
     
     manifest_data = []
     
@@ -98,19 +102,24 @@ def create_manifest(data_root, output_csv, max_videos=None):
         for frame_file in frame_files:
             # Extract frame number from filename (e.g., video01_000123.png -> 123)
             frame_basename = os.path.basename(frame_file)
-            frame_id = int(frame_basename.split('_')[1].replace('.png', ''))
+            png_number = int(frame_basename.split('_')[1].replace('.png', ''))
+            
+            # Frames are extracted at 1 FPS from 25 FPS videos
+            # PNG numbering: 1, 2, 3... corresponds to original frames: 0, 25, 50...
+            # So we need to convert: original_frame_id = (png_number - 1) * 25
+            original_frame_id = (png_number - 1) * 25
             
             # Get phase (all frames have phase annotations)
-            phase = phase_dict.get(frame_id, -1)  # -1 if missing
+            phase = phase_dict.get(original_frame_id, -1)  # -1 if missing
             
             # Get tools (tool annotations are sparse, so use nearest frame)
-            if frame_id in tool_dict:
-                tools = tool_dict[frame_id]
+            if original_frame_id in tool_dict:
+                tools = tool_dict[original_frame_id]
             else:
                 # Find nearest annotated frame
                 annotated_frames = sorted(tool_dict.keys())
                 if annotated_frames:
-                    nearest_frame = min(annotated_frames, key=lambda x: abs(x - frame_id))
+                    nearest_frame = min(annotated_frames, key=lambda x: abs(x - original_frame_id))
                     tools = tool_dict[nearest_frame]
                 else:
                     tools = [0, 0, 0, 0, 0, 0, 0]  # Default: no tools
@@ -119,7 +128,7 @@ def create_manifest(data_root, output_csv, max_videos=None):
             manifest_data.append({
                 'frame_path': frame_file,
                 'video_id': video_num,
-                'frame_id': frame_id,
+                'frame_id': original_frame_id,  # Store original 25 FPS frame ID
                 'phase': phase,
                 'grasper': tools[0],
                 'bipolar': tools[1],
@@ -152,6 +161,8 @@ if __name__ == "__main__":
                         help="Path for output manifest CSV (default: saves in cholec80 module directory)")
     parser.add_argument("--max_videos", type=int, default=None,
                         help="Maximum number of videos to process (default: all 80 videos)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed for video selection (default: 42). Use different seeds for train/val/test splits")
     
     args = parser.parse_args()
     
@@ -180,7 +191,7 @@ if __name__ == "__main__":
     print(f"Found Cholec80 data at: {args.data_root}")
     
     # Create manifest CSV
-    create_manifest(args.data_root, manifest_csv, max_videos=args.max_videos)
+    create_manifest(args.data_root, manifest_csv, max_videos=args.max_videos, seed=args.seed)
     
     print(f"\n{'='*60}")
     print("DATASET READY FOR PYTORCH!")

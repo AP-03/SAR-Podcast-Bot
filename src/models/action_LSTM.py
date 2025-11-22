@@ -103,7 +103,7 @@ class ActionLSTM(nn.Module):
         return predictions, probs
 
 
-'''class ActionLSTMWithAttention(ActionLSTM):
+class ActionLSTMWithAttention(ActionLSTM):
     """
     Enhanced LSTM model with attention mechanism for better
     temporal modeling of surgical actions.
@@ -250,4 +250,4 @@ if __name__ == "__main__":
     print(f"Output probs shape: {probs.shape}")
     print(f"Attention weights shape: {attn_weights.shape}")
     
-    print("\nModel created successfully!")'''
+    print("\nModel created successfully!")
