@@ -1,0 +1,282 @@
+[
+  {
+    "instruction": "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+    "response": "For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment."
+  },
+  {
+    "instruction": "I see manual 'Preparation'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Preparation manually, a robot would rely on **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Preparation.",
+    "response": "During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Preparation' considered safer?",
+    "response": "Safety during Preparation is improved by **Visual SLAM**, because During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Preparation'.",
+    "response": "The key algorithm is **Visual SLAM**."
+  },
+  {
+    "instruction": "The vision system detects 'Dissection'. What robotic algorithm applies here?",
+    "response": "For Dissection, the critical concept is **Motion Scaling**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts."
+  },
+  {
+    "instruction": "I see manual 'Dissection'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Dissection manually, a robot would rely on **Motion Scaling**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Dissection.",
+    "response": "Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Dissection' considered safer?",
+    "response": "Safety during Dissection is improved by **Motion Scaling**, because Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Dissection'.",
+    "response": "The key algorithm is **Motion Scaling**."
+  },
+  {
+    "instruction": "The vision system detects 'Clipping/Cutting'. What robotic algorithm applies here?",
+    "response": "For Clipping/Cutting, the critical concept is **Tremor Filtration**. Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+  },
+  {
+    "instruction": "I see manual 'Clipping/Cutting'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Clipping/Cutting manually, a robot would rely on **Tremor Filtration**. Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Clipping/Cutting.",
+    "response": "Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Clipping/Cutting' considered safer?",
+    "response": "Safety during Clipping/Cutting is improved by **Tremor Filtration**, because Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Clipping/Cutting'.",
+    "response": "The key algorithm is **Tremor Filtration**."
+  },
+  {
+    "instruction": "The vision system detects 'Gallbladder Retraction'. What robotic algorithm applies here?",
+    "response": "For Gallbladder Retraction, the critical concept is **Active Constraints (Virtual Fixtures)**. To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension."
+  },
+  {
+    "instruction": "I see manual 'Gallbladder Retraction'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Gallbladder Retraction manually, a robot would rely on **Active Constraints (Virtual Fixtures)**. To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Gallbladder Retraction.",
+    "response": "To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Gallbladder Retraction' considered safer?",
+    "response": "Safety during Gallbladder Retraction is improved by **Active Constraints (Virtual Fixtures)**, because To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Gallbladder Retraction'.",
+    "response": "The key algorithm is **Active Constraints (Virtual Fixtures)**."
+  },
+  {
+    "instruction": "The vision system detects 'Gallbladder Dissection'. What robotic algorithm applies here?",
+    "response": "For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding."
+  },
+  {
+    "instruction": "I see manual 'Gallbladder Dissection'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Gallbladder Dissection manually, a robot would rely on **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Gallbladder Dissection.",
+    "response": "The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Gallbladder Dissection' considered safer?",
+    "response": "Safety during Gallbladder Dissection is improved by **Inverse Kinematics**, because The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Gallbladder Dissection'.",
+    "response": "The key algorithm is **Inverse Kinematics**."
+  },
+  {
+    "instruction": "The vision system detects 'Cleaning Coagulation'. What robotic algorithm applies here?",
+    "response": "For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen."
+  },
+  {
+    "instruction": "I see manual 'Cleaning Coagulation'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Cleaning Coagulation manually, a robot would rely on **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Cleaning Coagulation.",
+    "response": "To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Cleaning Coagulation' considered safer?",
+    "response": "Safety during Cleaning Coagulation is improved by **Augmented Reality (Fluorescence)**, because To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Cleaning Coagulation'.",
+    "response": "The key algorithm is **Augmented Reality (Fluorescence)**."
+  },
+  {
+    "instruction": "The vision system detects 'Gallbladder Packaging'. What robotic algorithm applies here?",
+    "response": "For Gallbladder Packaging, the critical concept is **Master-Slave Teleoperation**. Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands."
+  },
+  {
+    "instruction": "I see manual 'Gallbladder Packaging'. How would a robot do this differently?",
+    "response": "While the human surgeon performs Gallbladder Packaging manually, a robot would rely on **Master-Slave Teleoperation**. Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands."
+  },
+  {
+    "instruction": "Explain the control theory behind robotic Gallbladder Packaging.",
+    "response": "Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands."
+  },
+  {
+    "instruction": "Why is the robotic approach to 'Gallbladder Packaging' considered safer?",
+    "response": "Safety during Gallbladder Packaging is improved by **Master-Slave Teleoperation**, because Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands."
+  },
+  {
+    "instruction": "Quickly identify the robotic algorithm for 'Gallbladder Packaging'.",
+    "response": "The key algorithm is **Master-Slave Teleoperation**."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Hook'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Hook. In a robotic system, the equivalent uses **EndoWrist (7 DOFs)**. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Hook.",
+    "response": "For the Hook functionality, the critical concept is **EndoWrist (7 DOFs)**. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind."
+  },
+  {
+    "instruction": "Contrast the manual Hook on screen with a robotic system.",
+    "response": "The manual Hook is limited by human dexterity. A robot improves this using **EndoWrist (7 DOFs)**. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind."
+  },
+  {
+    "instruction": "How does the robotic Hook improve surgical safety?",
+    "response": "Safety is enhanced because **EndoWrist (7 DOFs)** allows for greater precision. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind."
+  },
+  {
+    "instruction": "Could an AI operate the Hook autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Hook, an AI would need to perfectly master **EndoWrist (7 DOFs)** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Grasper. In a robotic system, the equivalent uses **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics\u2014analyzing tissue deformation in the video to estimate force."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Grasper.",
+    "response": "For the Grasper functionality, the critical concept is **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics\u2014analyzing tissue deformation in the video to estimate force."
+  },
+  {
+    "instruction": "Contrast the manual Grasper on screen with a robotic system.",
+    "response": "The manual Grasper is limited by human dexterity. A robot improves this using **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics\u2014analyzing tissue deformation in the video to estimate force."
+  },
+  {
+    "instruction": "How does the robotic Grasper improve surgical safety?",
+    "response": "Safety is enhanced because **Haptic Feedback Simulation** allows for greater precision. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics\u2014analyzing tissue deformation in the video to estimate force."
+  },
+  {
+    "instruction": "Could an AI operate the Grasper autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Grasper, an AI would need to perfectly master **Haptic Feedback Simulation** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Clipper'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Clipper. In a robotic system, the equivalent uses **Articulated Clip Applier**. A robotic Clipper can articulate (bend) at the wrist, allowing the surgeon to place clips on the artery from the side without contorting their own arm."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Clipper.",
+    "response": "For the Clipper functionality, the critical concept is **Articulated Clip Applier**. A robotic Clipper can articulate (bend) at the wrist, allowing the surgeon to place clips on the artery from the side without contorting their own arm."
+  },
+  {
+    "instruction": "Contrast the manual Clipper on screen with a robotic system.",
+    "response": "The manual Clipper is limited by human dexterity. A robot improves this using **Articulated Clip Applier**. A robotic Clipper can articulate (bend) at the wrist, allowing the surgeon to place clips on the artery from the side without contorting their own arm."
+  },
+  {
+    "instruction": "How does the robotic Clipper improve surgical safety?",
+    "response": "Safety is enhanced because **Articulated Clip Applier** allows for greater precision. A robotic Clipper can articulate (bend) at the wrist, allowing the surgeon to place clips on the artery from the side without contorting their own arm."
+  },
+  {
+    "instruction": "Could an AI operate the Clipper autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Clipper, an AI would need to perfectly master **Articulated Clip Applier** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Scissors'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Scissors. In a robotic system, the equivalent uses **Tremor Filtration (6Hz Low-Pass)**. Manual snipping can be shaky. The robotic scissors use a digital filter to remove the surgeon's physiological hand tremors (approx. 6-12Hz), allowing for smooth, confident cuts on the cystic duct."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Scissors.",
+    "response": "For the Scissors functionality, the critical concept is **Tremor Filtration (6Hz Low-Pass)**. Manual snipping can be shaky. The robotic scissors use a digital filter to remove the surgeon's physiological hand tremors (approx. 6-12Hz), allowing for smooth, confident cuts on the cystic duct."
+  },
+  {
+    "instruction": "Contrast the manual Scissors on screen with a robotic system.",
+    "response": "The manual Scissors is limited by human dexterity. A robot improves this using **Tremor Filtration (6Hz Low-Pass)**. Manual snipping can be shaky. The robotic scissors use a digital filter to remove the surgeon's physiological hand tremors (approx. 6-12Hz), allowing for smooth, confident cuts on the cystic duct."
+  },
+  {
+    "instruction": "How does the robotic Scissors improve surgical safety?",
+    "response": "Safety is enhanced because **Tremor Filtration (6Hz Low-Pass)** allows for greater precision. Manual snipping can be shaky. The robotic scissors use a digital filter to remove the surgeon's physiological hand tremors (approx. 6-12Hz), allowing for smooth, confident cuts on the cystic duct."
+  },
+  {
+    "instruction": "Could an AI operate the Scissors autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Scissors, an AI would need to perfectly master **Tremor Filtration (6Hz Low-Pass)** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Bipolar'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Bipolar. In a robotic system, the equivalent uses **Multitasking Efficiency**. The robotic Maryland Bipolar can dissect, grasp, and coagulate simultaneously due to its wrist articulation. This reduces instrument swaps compared to the rigid manual bipolar tool."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Bipolar.",
+    "response": "For the Bipolar functionality, the critical concept is **Multitasking Efficiency**. The robotic Maryland Bipolar can dissect, grasp, and coagulate simultaneously due to its wrist articulation. This reduces instrument swaps compared to the rigid manual bipolar tool."
+  },
+  {
+    "instruction": "Contrast the manual Bipolar on screen with a robotic system.",
+    "response": "The manual Bipolar is limited by human dexterity. A robot improves this using **Multitasking Efficiency**. The robotic Maryland Bipolar can dissect, grasp, and coagulate simultaneously due to its wrist articulation. This reduces instrument swaps compared to the rigid manual bipolar tool."
+  },
+  {
+    "instruction": "How does the robotic Bipolar improve surgical safety?",
+    "response": "Safety is enhanced because **Multitasking Efficiency** allows for greater precision. The robotic Maryland Bipolar can dissect, grasp, and coagulate simultaneously due to its wrist articulation. This reduces instrument swaps compared to the rigid manual bipolar tool."
+  },
+  {
+    "instruction": "Could an AI operate the Bipolar autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Bipolar, an AI would need to perfectly master **Multitasking Efficiency** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Irrigator'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Irrigator. In a robotic system, the equivalent uses **Console Foot-Pedal Control**. While manual irrigation requires a hand, robotic suction/irrigation is often controlled via foot pedals at the console. This allows the surgeon to clean the field while keeping both hands on the operating instruments."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Irrigator.",
+    "response": "For the Irrigator functionality, the critical concept is **Console Foot-Pedal Control**. While manual irrigation requires a hand, robotic suction/irrigation is often controlled via foot pedals at the console. This allows the surgeon to clean the field while keeping both hands on the operating instruments."
+  },
+  {
+    "instruction": "Contrast the manual Irrigator on screen with a robotic system.",
+    "response": "The manual Irrigator is limited by human dexterity. A robot improves this using **Console Foot-Pedal Control**. While manual irrigation requires a hand, robotic suction/irrigation is often controlled via foot pedals at the console. This allows the surgeon to clean the field while keeping both hands on the operating instruments."
+  },
+  {
+    "instruction": "How does the robotic Irrigator improve surgical safety?",
+    "response": "Safety is enhanced because **Console Foot-Pedal Control** allows for greater precision. While manual irrigation requires a hand, robotic suction/irrigation is often controlled via foot pedals at the console. This allows the surgeon to clean the field while keeping both hands on the operating instruments."
+  },
+  {
+    "instruction": "Could an AI operate the Irrigator autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Irrigator, an AI would need to perfectly master **Console Foot-Pedal Control** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  },
+  {
+    "instruction": "The vision system detects the tool 'Specimen Bag'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Specimen Bag. In a robotic system, the equivalent uses **Assistant Port Coordination**. Robots struggle with soft, floppy objects like bags. The Specimen Bag is typically introduced through a special 'Assistant Port' by a human nurse, requiring strict verbal coordination between the console surgeon and the bedside team."
+  },
+  {
+    "instruction": "Explain the robotic control concept associated with the Specimen Bag.",
+    "response": "For the Specimen Bag functionality, the critical concept is **Assistant Port Coordination**. Robots struggle with soft, floppy objects like bags. The Specimen Bag is typically introduced through a special 'Assistant Port' by a human nurse, requiring strict verbal coordination between the console surgeon and the bedside team."
+  },
+  {
+    "instruction": "Contrast the manual Specimen Bag on screen with a robotic system.",
+    "response": "The manual Specimen Bag is limited by human dexterity. A robot improves this using **Assistant Port Coordination**. Robots struggle with soft, floppy objects like bags. The Specimen Bag is typically introduced through a special 'Assistant Port' by a human nurse, requiring strict verbal coordination between the console surgeon and the bedside team."
+  },
+  {
+    "instruction": "How does the robotic Specimen Bag improve surgical safety?",
+    "response": "Safety is enhanced because **Assistant Port Coordination** allows for greater precision. Robots struggle with soft, floppy objects like bags. The Specimen Bag is typically introduced through a special 'Assistant Port' by a human nurse, requiring strict verbal coordination between the console surgeon and the bedside team."
+  },
+  {
+    "instruction": "Could an AI operate the Specimen Bag autonomously in the future?",
+    "response": "It is challenging but possible. To automate the Specimen Bag, an AI would need to perfectly master **Assistant Port Coordination** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action."
+  }
+]

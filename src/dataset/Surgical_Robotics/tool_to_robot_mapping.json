@@ -1,0 +1,30 @@
+{
+   "Hook": {
+        "concept": "EndoWrist (7 DOFs)",
+        "fact": "The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind."
+    },
+    "Grasper": {
+        "concept": "Haptic Feedback Simulation",
+        "fact": "Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics—analyzing tissue deformation in the video to estimate force."
+    },
+    "Clipper": {
+        "concept": "Articulated Clip Applier",
+        "fact": "A robotic Clipper can articulate (bend) at the wrist, allowing the surgeon to place clips on the artery from the side without contorting their own arm."
+    },
+    "Scissors": {
+        "concept": "Tremor Filtration (6Hz Low-Pass)",
+        "fact": "Manual snipping can be shaky. The robotic scissors use a digital filter to remove the surgeon's physiological hand tremors (approx. 6-12Hz), allowing for smooth, confident cuts on the cystic duct."
+    },
+    "Bipolar": {
+        "concept": "Multitasking Efficiency",
+        "fact": "The robotic Maryland Bipolar can dissect, grasp, and coagulate simultaneously due to its wrist articulation. This reduces instrument swaps compared to the rigid manual bipolar tool."
+    },
+    "Irrigator": {
+        "concept": "Console Foot-Pedal Control",
+        "fact": "While manual irrigation requires a hand, robotic suction/irrigation is often controlled via foot pedals at the console. This allows the surgeon to clean the field while keeping both hands on the operating instruments."
+    },
+    "Specimen Bag": {
+        "concept": "Assistant Port Coordination",
+        "fact": "Robots struggle with soft, floppy objects like bags. The Specimen Bag is typically introduced through a special 'Assistant Port' by a human nurse, requiring strict verbal coordination between the console surgeon and the bedside team."
+    }
+}

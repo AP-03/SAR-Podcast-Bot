@@ -1,0 +1,30 @@
+{
+    "Preparation": {
+        "concept": "Visual SLAM",
+        "fact": "During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment."
+    },
+    "Dissection": {
+        "concept": "Motion Scaling",
+        "fact": "Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts."
+    },
+    "Clipping/Cutting": {
+        "concept": "Tremor Filtration",
+        "fact": "Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+    },
+    "Gallbladder Retraction": {
+        "concept": "Active Constraints (Virtual Fixtures)",
+        "fact": "To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension."
+    },
+    "Gallbladder Dissection": {
+        "concept": "Inverse Kinematics",
+        "fact": "The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding."
+    },
+    "Cleaning Coagulation": {
+        "concept": "Augmented Reality (Fluorescence)",
+        "fact": "To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen."
+    },
+    "Gallbladder Packaging": {
+        "concept": "Master-Slave Teleoperation",
+        "fact": "Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands."
+    }
+}
