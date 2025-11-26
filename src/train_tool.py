@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report, f1_score
 from tqdm import tqdm
 import os
+import argparse
 from dataset.cholec80.util_dataset import Cholec80Dataset, TOOL_NAMES
 from dataset.transform import get_basic_transforms
 from models.tool_resnet import ToolCNN
@@ -13,7 +14,8 @@ from models.tool_resnet import ToolCNN
 
 def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cuda"):
     print("Loading transforms...")
-    train_transform, val_transform = get_basic_transforms()
+    train_transform = get_basic_transforms()
+    val_transform   = get_basic_transforms()
 
     print("Loading training dataset...")
     train_ds = Cholec80Dataset(train_csv, transform=train_transform)
@@ -315,22 +317,30 @@ def plot_training_results(train_losses, val_losses, all_preds, all_targets, mode
 
 if __name__ == "__main__":
     import os
-    
+
+    # Command-line config so you can force `cuda` or `cpu` easily
+    parser = argparse.ArgumentParser(description="Train tool detection model")
+    parser.add_argument('--device', type=str, default=None, help="Device to use: 'cuda' or 'cpu'. If omitted, auto-detects CUDA.")
+    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
+    parser.add_argument('--batch-size', type=int, default=16, help='Batch size')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    args = parser.parse_args()
+
     # Configuration - separate train and validation sets
     # Use absolute paths to ensure we load the correct CSVs
     script_dir = os.path.dirname(os.path.abspath(__file__))
     train_csv = os.path.join(script_dir, "dataset/cholec80/cholec80_manifest.csv")  # seed=42, 5 videos
     val_csv = os.path.join(script_dir, "dataset/cholec80/cholec80_val.csv")         # seed=100, 5 videos
-    
+
     # Create results directory
     results_dir = os.path.join(script_dir, 'tool_results')
     os.makedirs(results_dir, exist_ok=True)
-    
-    # Training parameters
-    epochs = 10
-    batch_size = 16
-    lr = 1e-4
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Training parameters (can be overridden via CLI)
+    epochs = args.epochs
+    batch_size = args.batch_size
+    lr = args.lr
+    device = args.device if args.device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
     
     print("="*60)
     print("CHOLEC80 TOOL DETECTION TRAINING")
