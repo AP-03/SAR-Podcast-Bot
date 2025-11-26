@@ -26,8 +26,8 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
     print(f"✓ Loaded {len(val_ds)} validation samples")
 
     print("Creating data loaders...")
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
     print(f"✓ Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
 
     print("Initializing model...")

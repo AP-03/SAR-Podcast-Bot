@@ -89,8 +89,9 @@ class Cholec80Dataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         
-        # Load image
-        img = Image.open(row['frame_path']).convert('RGB')
+        # Load image and immediately convert to numpy to release file handle
+        with Image.open(row['frame_path']) as pil_img:
+            img = pil_img.convert('RGB')
         
         if self.transform:
             img = self.transform(img)
@@ -197,7 +198,7 @@ def make_cholec80(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        num_workers=num_workers,
+        num_workers=0,
         pin_memory=torch.cuda.is_available(),
         **dataloader_kwargs
     )
