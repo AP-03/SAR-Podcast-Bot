@@ -5,21 +5,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report, f1_score
 from tqdm import tqdm
-
+import os
 from dataset.cholec80.util_dataset import Cholec80Dataset, TOOL_NAMES
 from dataset.transform import get_basic_transforms
 from models.tool_resnet import ToolCNN
 
+
 def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cuda"):
     print("Loading transforms...")
-    transform = get_basic_transforms()
+    train_transform, val_transform = get_basic_transforms()
 
     print("Loading training dataset...")
-    train_ds = Cholec80Dataset(train_csv, transform=transform)
+    train_ds = Cholec80Dataset(train_csv, transform=train_transform)
     print(f"✓ Loaded {len(train_ds)} training samples")
     
     print("Loading validation dataset...")
-    val_ds   = Cholec80Dataset(val_csv,   transform=transform)
+    val_ds   = Cholec80Dataset(val_csv,   transform=val_transform)
     print(f"✓ Loaded {len(val_ds)} validation samples")
 
     print("Creating data loaders...")
@@ -28,7 +29,7 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
     print(f"✓ Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
 
     print("Initializing model...")
-    model = ToolCNN(num_tools=7).to(device)
+    model = ToolCNN(num_tools=7, num_stages=7).to(device)
     print("✓ Model loaded to device")
     
     # Calculate class weights for imbalanced tools
@@ -52,8 +53,24 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         print(f"  {name:15s}: {freq:5.1f}% (weight: {pos_weight[i].item():.2f})")
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    # Adam optimizer with weight decay (L2 regularization)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    stage_criterion = nn.CrossEntropyLoss()
+    lambda_stage = 1.0
+
+    warmup_epochs = 2
+    model.freeze_backbone()
+    print(f"\n✓ Freezing backbone for first {warmup_epochs} epochs")
+
+    head_lr = lr
+    backbone_lr = lr * 0.1
+
+    optimizer = optim.Adam(
+        [
+            {"params": model.head_parameters(),      "lr": head_lr},
+            {"params": model.backbone_parameters(),  "lr": 0.0},
+        ],
+        weight_decay=1e-4,
+    )
+
     print("\n✓ Setup complete, starting training...\n")
 
     # Track metrics for plotting
@@ -62,6 +79,10 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
     
     for epoch in range(epochs):
         # ----- train -----
+        if epoch==warmup_epochs:
+            model.unfreeze_backbone()
+            print(f"\n✓ Unfreezing backbone for fine-tuning from epoch {epoch+1} onwards")
+            optimizer.param_groups[1]['lr'] = backbone_lr
         model.train()
         running_loss = 0.0
         train_preds_epoch = []
@@ -70,18 +91,40 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]")
         for batch in pbar:
             imgs = batch['image'].to(device)
-            tool_targets = batch['tools'].to(device)
+            tool_targets  = batch['tools'].to(device)
+            # CHANGE 'phase' here if your dataset uses a different key name
+            stage_targets = batch['phase'].to(device).long()
 
-            logits, probs = model(imgs)    # logits used for loss
-            loss = criterion(logits, tool_targets)
+            tool_logits, stage_logits = model(imgs)
+
+            tool_loss  = criterion(tool_logits, tool_targets)
+            stage_loss = stage_criterion(stage_logits, stage_targets)
+            loss = tool_loss + lambda_stage * stage_loss
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item() * imgs.size(0)
-            
-            # Collect predictions for F1 calculation
+
+            probs = torch.sigmoid(tool_logits)
+            train_preds_epoch.append(probs.detach().cpu().numpy())
+            train_targets_epoch.append(tool_targets.cpu().numpy())
+
+            pbar.set_postfix({
+                'loss': f"{loss.item():.4f}",
+                't_loss': f"{tool_loss.item():.4f}",
+                's_loss': f"{stage_loss.item():.4f}",
+            })
+
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * imgs.size(0)
+
+            probs=torch.sigmoid(tool_logits)
             train_preds_epoch.append(probs.detach().cpu().numpy())
             train_targets_epoch.append(tool_targets.cpu().numpy())
             
@@ -102,21 +145,45 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         val_loss = 0.0
         all_preds = []
         all_targets = []
-        
+        val_stage_correct = 0
+        val_stage_total = 0
+
         with torch.no_grad():
             pbar = tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [Val]  ")
             for batch in pbar:
                 imgs = batch['image'].to(device)
-                tool_targets = batch['tools'].to(device)
+                tool_targets  = batch['tools'].to(device)
+                # CHANGE 'phase' here if your dataset uses a different key name
+                stage_targets = batch['phase'].to(device).long()
 
-                logits, probs = model(imgs)
-                loss = criterion(logits, tool_targets)
+                tool_logits, stage_logits = model(imgs)
+
+                tool_loss  = criterion(tool_logits, tool_targets)
+                stage_loss = stage_criterion(stage_logits, stage_targets)
+                loss = tool_loss + lambda_stage * stage_loss
                 val_loss += loss.item() * imgs.size(0)
-                
-                # Collect predictions and targets for metrics
+
+                # Tool predictions for metrics
+                probs = torch.sigmoid(tool_logits)
                 all_preds.append(probs.cpu().numpy())
                 all_targets.append(tool_targets.cpu().numpy())
-                pbar.set_postfix({'loss': f"{loss.item():.4f}"})
+
+                # Stage accuracy (optional but useful)
+                _, stage_pred = stage_logits.max(dim=1)   # [B]
+                val_stage_correct += (stage_pred == stage_targets).sum().item()
+                val_stage_total   += stage_targets.size(0)
+
+                pbar.set_postfix({
+                    'loss': f"{loss.item():.4f}",
+                    't_loss': f"{tool_loss.item():.4f}",
+                    's_loss': f"{stage_loss.item():.4f}",
+                })
+
+        val_loss /= len(val_loader.dataset)
+        val_losses.append(val_loss)
+
+        val_stage_acc = val_stage_correct / val_stage_total
+
 
         val_loss /= len(val_loader.dataset)
         val_losses.append(val_loss)
@@ -134,7 +201,13 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         avg_f1 = np.mean(f1_per_tool)
         
         # Print with both train and val F1
-        print(f"Epoch {epoch+1}/{epochs} | train_loss={train_loss:.4f} | train_F1={train_f1:.4f} | val_loss={val_loss:.4f} | val_F1={avg_f1:.4f}")
+        print(
+        f"Epoch {epoch+1}/{epochs} | "
+        f"train_loss={train_loss:.4f} | train_F1={train_f1:.4f} | "
+        f"val_loss={val_loss:.4f} | val_F1={avg_f1:.4f} | "
+        f"val_stage_acc={val_stage_acc:.4f}"
+        )
+
     
     # After training, create visualizations
     plot_training_results(train_losses, val_losses, all_preds, all_targets, model, val_loader, device)
