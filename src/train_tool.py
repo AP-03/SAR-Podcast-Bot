@@ -119,19 +119,6 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
                 's_loss': f"{stage_loss.item():.4f}",
             })
 
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            running_loss += loss.item() * imgs.size(0)
-
-            probs=torch.sigmoid(tool_logits)
-            train_preds_epoch.append(probs.detach().cpu().numpy())
-            train_targets_epoch.append(tool_targets.cpu().numpy())
-            
-            pbar.set_postfix({'loss': f"{loss.item():.4f}"})
-
         train_loss = running_loss / len(train_loader.dataset)
         train_losses.append(train_loss)
         
@@ -185,10 +172,6 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         val_losses.append(val_loss)
 
         val_stage_acc = val_stage_correct / val_stage_total
-
-
-        val_loss /= len(val_loader.dataset)
-        val_losses.append(val_loss)
         
         # Calculate per-tool F1 scores
         all_preds = np.vstack(all_preds)
