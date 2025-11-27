@@ -9,6 +9,7 @@ from PIL import Image
 import pandas as pd
 import numpy as np
 from typing import Optional, List, Callable
+from collections import defaultdict
 
 
 # Dataset constants
@@ -124,7 +125,7 @@ class Cholec80Dataset(Dataset):
     
     def get_phase_weights(self):
         """
-        Calculate class weights for imbalanced phases (useful for weighted loss)
+        Calculate class weights for imbalanced phases (useful for weighted loss) 
         
         Returns:
             torch.Tensor: Weight for each phase class
@@ -267,3 +268,52 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\nERROR: {e}")
         print("Make sure you have torchvision installed: pip install torchvision")
+
+
+class FeatureSequenceDataset(Dataset):
+    """
+    Custom Dataset for loading sequences from pre-extracted feature files.
+    """
+    def __init__(self, feature_file, sequence_length=16):
+        self.sequence_length = sequence_length
+        
+        print(f"Loading features from {feature_file}...")
+        data = torch.load(feature_file)
+        features = data['features']
+        phases = data['phases']
+        video_ids = data['video_ids']
+        
+        self.sequences = self._create_sequences(features, phases, video_ids)
+        print(f"Created {len(self.sequences)} sequences.")
+
+    def _create_sequences(self, features, phases, video_ids):
+        sequences = []
+        # Group indices by video_id
+        video_indices = defaultdict(list)
+        for i, vid in enumerate(video_ids):
+            video_indices[vid.item()].append(i)
+        
+        # Create overlapping sequences for each video
+        for vid in sorted(video_indices.keys()):
+            indices = video_indices[vid]
+            for i in range(len(indices) - self.sequence_length + 1):
+                seq_indices = indices[i : i + self.sequence_length]
+                
+                # The label for the sequence is the phase of the LAST frame
+                label = phases[seq_indices[-1]]
+                
+                # Get the features for the full sequence
+                feature_sequence = features[seq_indices]
+                
+                sequences.append({
+                    'features': feature_sequence,
+                    'label': label
+                })
+        return sequences
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        sequence_info = self.sequences[idx]
+        return sequence_info['features'], sequence_info['label']

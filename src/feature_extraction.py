@@ -13,7 +13,7 @@ def extract_features(csv_path: str, ckpt_path: str, out_file: str, device: str =
     Extracts features from a dataset specified by a CSV file and saves them to a file.
     """
     print(f"Loading dataset from: {csv_path}")
-    ds = Cholec80Dataset(csv_path, transform=get_basic_transforms())
+    ds = Cholec80Dataset(csv_path, transform=get_basic_transforms(), return_video_info=True)
     loader = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=4)
 
     print("Loading model...")
@@ -36,6 +36,7 @@ def extract_features(csv_path: str, ckpt_path: str, out_file: str, device: str =
     all_feats = []
     all_tools = []
     all_phases = []
+    all_video_ids = []
 
     print("Extracting features...")
     with torch.no_grad():
@@ -43,21 +44,24 @@ def extract_features(csv_path: str, ckpt_path: str, out_file: str, device: str =
             imgs = batch['image'].to(device)
             tool_targets = batch['tools']
             phase_targets = batch['phase']
+            video_ids = batch['video_id']
             
-            tool_logits, stage_logits, feats = model(imgs, return_features=True)
+            _, _, feats = model(imgs, return_features=True)
             
             all_feats.append(feats.cpu())
             all_tools.append(tool_targets)
             all_phases.append(phase_targets)
+            all_video_ids.append(video_ids)
 
     all_feats = torch.cat(all_feats, dim=0)
     all_tools = torch.cat(all_tools, dim=0)
     all_phases = torch.cat(all_phases, dim=0)
+    all_video_ids = torch.cat(all_video_ids, dim=0)
 
     print(f"Saving features to: {out_file}")
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     torch.save(
-        {"features": all_feats, "tools": all_tools, "phases": all_phases},
+        {"features": all_feats, "tools": all_tools, "phases": all_phases, "video_ids": all_video_ids},
         out_file,
     )
     print("Extraction complete.")
