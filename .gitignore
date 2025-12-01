@@ -21,7 +21,6 @@ dataset/cholec80
 *.pkl
 *.pickle
 *.pt
-*.pth
 *.ckpt
 *.safetensors
 *.onnx
