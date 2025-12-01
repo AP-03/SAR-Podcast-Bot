@@ -1,18 +1,21 @@
 import torch
 from torch.utils.data import DataLoader
 from torch import nn, optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report, f1_score
 from tqdm import tqdm
 import os
 import argparse
+import json
+from datetime import datetime
 from dataset.cholec80.util_dataset import Cholec80Dataset, TOOL_NAMES
 from dataset.transform import get_basic_transforms
 from models.tool_resnet import ToolCNN
 
 
-def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cuda"):
+def train_tools(train_csv, val_csv, epochs=27, batch_size=1, lr=5e-5, device="cuda", accumulation_steps=32, results_dir=None):
     print("Loading transforms...")
     train_transform = get_basic_transforms()
     val_transform   = get_basic_transforms()
@@ -29,33 +32,32 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
     print(f"✓ Train batches: {len(train_loader)}, Val batches: {len(val_loader)}")
+    print(f"✓ Gradient accumulation: {accumulation_steps} steps (effective batch size: {batch_size * accumulation_steps})")
 
     print("Initializing model...")
     model = ToolCNN(num_tools=7, num_stages=7).to(device)
     print("✓ Model loaded to device")
     
-    # Calculate class weights for imbalanced tools
+    # Calculate class weights for imbalanced tools - FAST using CSV methods
     print("\nCalculating class weights for imbalanced tools...")
-    pos_counts = torch.zeros(7)
-    total_samples = len(train_ds)
-    
-    for idx in range(len(train_ds)):
-        sample = train_ds[idx]
-        pos_counts += sample['tools']
-    
-    # pos_weight = (num_negative) / (num_positive) for each class
-    # This upweights the loss for minority (rare) tools
-    neg_counts = total_samples - pos_counts
-    pos_weight = neg_counts / (pos_counts + 1e-5)  # avoid division by zero
-    pos_weight = pos_weight.to(device)
+    pos_weight = train_ds.get_tool_pos_weights().to(device)
+    stage_weights = train_ds.get_phase_weights().to(device)
     
     print(f"Tool frequencies:")
     for i, name in enumerate(TOOL_NAMES):
-        freq = pos_counts[i].item() / total_samples * 100
+        freq = train_ds.df[['grasper', 'bipolar', 'hook', 'scissors', 'clipper', 'irrigator', 'specimen_bag'][i]].sum() / len(train_ds) * 100
         print(f"  {name:15s}: {freq:5.1f}% (weight: {pos_weight[i].item():.2f})")
     
+    phase_names = ["Preparation", "CalotTriangleDissection", "ClippingCutting", "GallbladderDissection", 
+                   "GallbladderRetraction", "CleaningCoagulation", "GallbladderPackaging"]
+    print(f"\nPhase frequencies:")
+    for i, name in enumerate(phase_names):
+        phase_count = (train_ds.df['phase'] == i).sum()
+        freq = phase_count / len(train_ds) * 100
+        print(f"  {name:30s}: {freq:5.1f}% (weight: {stage_weights[i].item():.2f})")
+    
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    stage_criterion = nn.CrossEntropyLoss()
+    stage_criterion = nn.CrossEntropyLoss(weight=stage_weights)
     lambda_stage = 1.0
 
     warmup_epochs = 2
@@ -73,24 +75,45 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         weight_decay=1e-4,
     )
 
+    # Learning rate scheduler - reduces LR when validation F1 plateaus
+    scheduler = ReduceLROnPlateau(
+        optimizer, 
+        mode='max',  # maximize F1
+        factor=0.5, 
+        patience=3,  # reduce LR if no improvement for 3 epochs
+        min_lr=1e-6
+    )
+
     print("\n✓ Setup complete, starting training...\n")
 
     # Track metrics for plotting
     train_losses = []
     val_losses = []
+    val_f1_scores = []
+    train_f1_scores = []
+    val_stage_accs = []
+    train_stage_accs = []
+    
+    # Best model tracking
+    best_val_f1 = -1.0
+    best_epoch = -1
+    patience = 10  # early stopping patience
+    epochs_without_improvement = 0
     
     for epoch in range(epochs):
         # ----- train -----
-        if epoch==warmup_epochs:
+        if epoch == warmup_epochs:
             model.unfreeze_backbone()
             print(f"\n✓ Unfreezing backbone for fine-tuning from epoch {epoch+1} onwards")
             optimizer.param_groups[1]['lr'] = backbone_lr
+            
         model.train()
         running_loss = 0.0
         train_preds_epoch = []
         train_targets_epoch = []
         
         pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]")
+        accumulation_counter = 0
         for batch in pbar:
             imgs = batch['image'].to(device)
             tool_targets  = batch['tools'].to(device)
@@ -103,21 +126,34 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
             stage_loss = stage_criterion(stage_logits, stage_targets)
             loss = tool_loss + lambda_stage * stage_loss
 
-            optimizer.zero_grad()
+            # Normalize loss by accumulation steps
+            loss = loss / accumulation_steps
             loss.backward()
-            optimizer.step()
+            
+            accumulation_counter += 1
+            
+            # Update weights after accumulation_steps mini-batches
+            if accumulation_counter % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+                accumulation_counter = 0
 
-            running_loss += loss.item() * imgs.size(0)
+            running_loss += loss.item() * imgs.size(0) * accumulation_steps
 
             probs = torch.sigmoid(tool_logits)
             train_preds_epoch.append(probs.detach().cpu().numpy())
             train_targets_epoch.append(tool_targets.cpu().numpy())
 
             pbar.set_postfix({
-                'loss': f"{loss.item():.4f}",
+                'loss': f"{loss.item() * accumulation_steps:.4f}",
                 't_loss': f"{tool_loss.item():.4f}",
                 's_loss': f"{stage_loss.item():.4f}",
             })
+        
+        # Handle remaining gradients if dataset size isn't divisible by accumulation_steps
+        if accumulation_counter > 0:
+            optimizer.step()
+            optimizer.zero_grad()
 
         train_loss = running_loss / len(train_loader.dataset)
         train_losses.append(train_loss)
@@ -128,6 +164,7 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         train_binary = (train_preds_epoch > 0.5).astype(int)
         train_f1s = [f1_score(train_targets_epoch[:, i], train_binary[:, i], zero_division=0) for i in range(7)]
         train_f1 = np.mean(train_f1s)
+        train_f1_scores.append(train_f1)
 
         # ----- validate -----
         model.eval()
@@ -172,6 +209,7 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
         val_losses.append(val_loss)
 
         val_stage_acc = val_stage_correct / val_stage_total
+        val_stage_accs.append(val_stage_acc)
         
         # Calculate per-tool F1 scores
         all_preds = np.vstack(all_preds)
@@ -184,22 +222,69 @@ def train_tools(train_csv, val_csv, epochs=10, batch_size=32, lr=1e-4,device="cu
             f1_per_tool.append(f1)
         
         avg_f1 = np.mean(f1_per_tool)
+        val_f1_scores.append(avg_f1)
         
         # Print with both train and val F1
+        is_best = avg_f1 > best_val_f1
+        best_marker = " ⭐ BEST" if is_best else ""
         print(
-        f"Epoch {epoch+1}/{epochs} | "
-        f"train_loss={train_loss:.4f} | train_F1={train_f1:.4f} | "
-        f"val_loss={val_loss:.4f} | val_F1={avg_f1:.4f} | "
-        f"val_stage_acc={val_stage_acc:.4f}"
+            f"Epoch {epoch+1}/{epochs} | "
+            f"train_loss={train_loss:.4f} | train_F1={train_f1:.4f} | "
+            f"val_loss={val_loss:.4f} | val_F1={avg_f1:.4f} | "
+            f"val_stage_acc={val_stage_acc:.4f}{best_marker}"
         )
+        
+        # Update learning rate based on validation F1
+        scheduler.step(avg_f1)
+        
+        # Save best model
+        if is_best:
+            best_val_f1 = avg_f1
+            best_epoch = epoch + 1
+            epochs_without_improvement = 0
+            
+            if results_dir:
+                best_model_path = os.path.join(results_dir, "tool_detection_model_best.pth")
+                torch.save(model.state_dict(), best_model_path)
+                print(f"  → Saved best model (F1={avg_f1:.4f}) to '{best_model_path}'")
+        else:
+            epochs_without_improvement += 1
+            
+            # Early stopping
+            if epochs_without_improvement >= patience:
+                print(f"\n✓ Early stopping triggered! No improvement for {patience} epochs.")
+                print(f"  Best model: Epoch {best_epoch} with F1={best_val_f1:.4f}")
+                break
 
+    print(f"\n✓ Training complete!")
+    print(f"  Best validation F1: {best_val_f1:.4f} (Epoch {best_epoch})")
     
     # After training, create visualizations
-    plot_training_results(train_losses, val_losses, all_preds, all_targets, model, val_loader, device)
+    plot_training_results(
+        train_losses, val_losses, train_f1_scores, val_f1_scores,
+        all_preds, all_targets, model, val_loader, device, results_dir
+    )
+    
+    # Save training history as JSON for future reference
+    if results_dir:
+        history = {
+            'train_losses': train_losses,
+            'val_losses': val_losses,
+            'train_f1_scores': train_f1_scores,
+            'val_f1_scores': val_f1_scores,
+            'val_stage_accs': val_stage_accs,
+            'best_epoch': best_epoch,
+            'best_val_f1': float(best_val_f1),
+            'total_epochs_trained': len(train_losses)
+        }
+        history_path = os.path.join(results_dir, 'training_history.json')
+        with open(history_path, 'w') as f:
+            json.dump(history, f, indent=2)
+        print(f"  Training history saved to '{history_path}'")
     
     return model
 
-def plot_training_results(train_losses, val_losses, all_preds, all_targets, model, val_loader, device):
+def plot_training_results(train_losses, val_losses, train_f1_scores, val_f1_scores, all_preds, all_targets, model, val_loader, device, results_dir=None):
     """
     Create essential visualizations of training results
     """
@@ -228,56 +313,65 @@ def plot_training_results(train_losses, val_losses, all_preds, all_targets, mode
         recalls.append(recall)
         accuracies.append(acc)
     
-    # Create figure with 3 key plots
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    # Create figure with 4 plots for better monitoring
+    fig, axes = plt.subplots(2, 2, figsize=(16, 12))
     
     # 1. Loss curves - most important for tracking training
     epochs = range(1, len(train_losses) + 1)
-    axes[0].plot(epochs, train_losses, 'b-o', label='Train Loss', linewidth=2)
-    axes[0].plot(epochs, val_losses, 'r-o', label='Val Loss', linewidth=2)
-    axes[0].set_xlabel('Epoch', fontsize=12)
-    axes[0].set_ylabel('Loss', fontsize=12)
-    axes[0].set_title('Training & Validation Loss', fontsize=14, fontweight='bold')
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
+    axes[0, 0].plot(epochs, train_losses, 'b-o', label='Train Loss', linewidth=2, markersize=4)
+    axes[0, 0].plot(epochs, val_losses, 'r-o', label='Val Loss', linewidth=2, markersize=4)
+    axes[0, 0].set_xlabel('Epoch', fontsize=12)
+    axes[0, 0].set_ylabel('Loss', fontsize=12)
+    axes[0, 0].set_title('Training & Validation Loss', fontsize=14, fontweight='bold')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
     
-    # 2. Per-tool F1 scores - key performance metric
+    # 2. F1 scores over epochs
+    axes[0, 1].plot(epochs, train_f1_scores, 'b-o', label='Train F1', linewidth=2, markersize=4)
+    axes[0, 1].plot(epochs, val_f1_scores, 'r-o', label='Val F1', linewidth=2, markersize=4)
+    axes[0, 1].set_xlabel('Epoch', fontsize=12)
+    axes[0, 1].set_ylabel('F1 Score', fontsize=12)
+    axes[0, 1].set_title('F1 Score Evolution', fontsize=14, fontweight='bold')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+    axes[0, 1].set_ylim([0, 1])
+    
+    # 3. Per-tool F1 scores on final validation
     colors = plt.cm.viridis(np.linspace(0, 1, 7))
-    bars = axes[1].bar(range(7), f1_scores, color=colors, alpha=0.8)
-    axes[1].set_xticks(range(7))
-    axes[1].set_xticklabels(TOOL_NAMES, rotation=45, ha='right')
-    axes[1].set_ylabel('F1 Score', fontsize=12)
-    axes[1].set_title('Per-Tool F1 Scores', fontsize=14, fontweight='bold')
-    axes[1].set_ylim([0, 1])
-    axes[1].grid(axis='y', alpha=0.3)
+    bars = axes[1, 0].bar(range(7), f1_scores, color=colors, alpha=0.8)
+    axes[1, 0].set_xticks(range(7))
+    axes[1, 0].set_xticklabels(TOOL_NAMES, rotation=45, ha='right')
+    axes[1, 0].set_ylabel('F1 Score', fontsize=12)
+    axes[1, 0].set_title('Per-Tool F1 Scores (Final Validation)', fontsize=14, fontweight='bold')
+    axes[1, 0].set_ylim([0, 1])
+    axes[1, 0].grid(axis='y', alpha=0.3)
     
     # Add value labels on bars
     for i, (bar, score) in enumerate(zip(bars, f1_scores)):
         height = bar.get_height()
-        axes[1].text(bar.get_x() + bar.get_width()/2., height,
+        axes[1, 0].text(bar.get_x() + bar.get_width()/2., height,
                     f'{score:.3f}', ha='center', va='bottom', fontsize=9)
     
-    # 3. Precision & Recall - important for understanding model behavior
+    # 4. Precision & Recall - important for understanding model behavior
     x = np.arange(7)
     width = 0.35
-    axes[2].bar(x - width/2, precisions, width, label='Precision', alpha=0.8, color='steelblue')
-    axes[2].bar(x + width/2, recalls, width, label='Recall', alpha=0.8, color='coral')
-    axes[2].set_xticks(range(7))
-    axes[2].set_xticklabels(TOOL_NAMES, rotation=45, ha='right')
-    axes[2].set_ylabel('Score', fontsize=12)
-    axes[2].set_title('Precision & Recall per Tool', fontsize=14, fontweight='bold')
-    axes[2].set_ylim([0, 1])
-    axes[2].legend()
-    axes[2].grid(axis='y', alpha=0.3)
+    axes[1, 1].bar(x - width/2, precisions, width, label='Precision', alpha=0.8, color='steelblue')
+    axes[1, 1].bar(x + width/2, recalls, width, label='Recall', alpha=0.8, color='coral')
+    axes[1, 1].set_xticks(range(7))
+    axes[1, 1].set_xticklabels(TOOL_NAMES, rotation=45, ha='right')
+    axes[1, 1].set_ylabel('Score', fontsize=12)
+    axes[1, 1].set_title('Precision & Recall per Tool (Final Validation)', fontsize=14, fontweight='bold')
+    axes[1, 1].set_ylim([0, 1])
+    axes[1, 1].legend()
+    axes[1, 1].grid(axis='y', alpha=0.3)
     
     plt.tight_layout()
     
-    # Save to tool_results directory
-    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tool_results')
-    os.makedirs(results_dir, exist_ok=True)
-    plot_path = os.path.join(results_dir, 'tool_detection_results.png')
-    plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-    print(f"\n✓ Training results saved to '{plot_path}'")
+    # Save to results directory
+    if results_dir:
+        plot_path = os.path.join(results_dir, 'tool_detection_results.png')
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        print(f"✓ Training results saved to '{plot_path}'")
     plt.show()
     
     # Print summary statistics
@@ -304,9 +398,9 @@ if __name__ == "__main__":
     # Command-line config so you can force `cuda` or `cpu` easily
     parser = argparse.ArgumentParser(description="Train tool detection model")
     parser.add_argument('--device', type=str, default=None, help="Device to use: 'cuda' or 'cpu'. If omitted, auto-detects CUDA.")
-    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
-    parser.add_argument('--batch-size', type=int, default=16, help='Batch size')
-    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    parser.add_argument('--epochs', type=int, default=27, help='Number of training epochs (default: 27)')
+    parser.add_argument('--batch-size', type=int, default=1, help='Batch size')
+    parser.add_argument('--lr', type=float, default=5e-5, help='Learning rate')
     args = parser.parse_args()
 
     # Configuration - separate train and validation sets
@@ -344,10 +438,12 @@ if __name__ == "__main__":
         epochs=epochs,
         batch_size=batch_size,
         lr=lr,
-        device=device
+        device=device,
+        accumulation_steps=32,
+        results_dir=results_dir
     )
     
     # Save final model to tool_results directory
-    model_path = os.path.join(results_dir, "tool_detection_model.pth")
+    model_path = os.path.join(results_dir, "tool_detection_model_final.pth")
     torch.save(model.state_dict(), model_path)
-    print(f"\n✓ Model saved to '{model_path}'")
+    print(f"✓ Final model saved to '{model_path}'")

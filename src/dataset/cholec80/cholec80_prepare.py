@@ -52,7 +52,7 @@ def parse_tool_annotations(tool_file):
     return tool_dict
 
 
-def create_manifest(data_root, output_csv, max_videos=None, seed=42):
+def create_manifest(data_root, output_csv, max_videos=None, video_ids=None, seed=42):
     """
     Create a CSV manifest file with columns:
     frame_path, video_id, frame_id, phase, grasper, bipolar, hook, scissors, clipper, irrigator, specimen_bag
@@ -61,6 +61,8 @@ def create_manifest(data_root, output_csv, max_videos=None, seed=42):
         data_root: Path to cholec80 directory
         output_csv: Path to output CSV file
         max_videos: Maximum number of videos to process (None = all videos)
+        video_ids: Specific list of video IDs to use (overrides max_videos)
+        seed: Random seed for video selection
     """
     
     frames_dir = os.path.join(data_root, "frames")
@@ -68,15 +70,32 @@ def create_manifest(data_root, output_csv, max_videos=None, seed=42):
     tool_dir = os.path.join(data_root, "tool_annotations")
     
     # Get all video directories
-    video_dirs = sorted(glob(os.path.join(frames_dir, "video*")))
+    all_video_dirs = sorted(glob(os.path.join(frames_dir, "video*")))
     
+    # Filter by specific video IDs if provided
+    if video_ids is not None:
+        video_dirs = []
+        for vid in sorted(video_ids):
+            # Find video directory matching this ID
+            matching = [d for d in all_video_dirs if int(os.path.basename(d).replace('video', '')) == vid]
+            if matching:
+                video_dirs.append(matching[0])
+        video_dirs = sorted(video_dirs)
+        if len(video_dirs) != len(video_ids):
+            missing = set(video_ids) - {int(os.path.basename(d).replace('video', '')) for d in video_dirs}
+            if missing:
+                print(f"Warning: Could not find videos with IDs: {sorted(missing)}")
+        print(f"Using {len(video_dirs)} specified videos: {sorted(video_ids)}")
     # Limit number of videos if specified
-    if max_videos is not None:
+    elif max_videos is not None:
         random.seed(seed)  # Set seed for reproducibility
-        video_dirs = random.sample(video_dirs, min(max_videos, len(video_dirs)))
+        video_dirs = random.sample(all_video_dirs, min(max_videos, len(all_video_dirs)))
         video_dirs = sorted(video_dirs)  # Sort for consistent processing order
+        selected_ids = [int(os.path.basename(v).replace('video', '')) for v in video_dirs]
         print(f"Randomly selected {len(video_dirs)} videos (seed={seed})")
-        print(f"Selected video IDs: {[int(os.path.basename(v).replace('video', '')) for v in video_dirs]}")
+        print(f"Selected video IDs: {sorted(selected_ids)}")
+    else:
+        video_dirs = all_video_dirs
     
     manifest_data = []
     
@@ -154,15 +173,33 @@ def create_manifest(data_root, output_csv, max_videos=None, seed=42):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Create Cholec80 dataset manifest for PyTorch')
+    parser = argparse.ArgumentParser(
+        description='Create Cholec80 dataset manifest for PyTorch',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Create training manifest with videos 1-60 (deterministic, NO overlap)
+  python cholec80_prepare.py --data_root "C:/path/to/cholec80" \\
+      --video_ids 1 2 3 4 5 ... 60 --output_csv cholec80_train.csv
+
+  # Create validation manifest with videos 61-80 (NO OVERLAP with training!)
+  python cholec80_prepare.py --data_root "C:/path/to/cholec80" \\
+      --video_ids 61 62 63 64 65 ... 80 --output_csv cholec80_val.csv
+
+  # Random selection: 60 videos with seed 42
+  python cholec80_prepare.py --data_root "C:/path/to/cholec80" \\
+      --max_videos 60 --seed 42 --output_csv cholec80_train.csv
+        """)
     parser.add_argument("--data_root", required=True,
                         help="Path to cholec80 directory (contains frames/, phase_annotations/, tool_annotations/)")
     parser.add_argument("--output_csv", default=None,
                         help="Path for output manifest CSV (default: saves in cholec80 module directory)")
     parser.add_argument("--max_videos", type=int, default=None,
-                        help="Maximum number of videos to process (default: all 80 videos)")
+                        help="Maximum number of videos to process (default: all 80 videos). Ignored if --video_ids is set.")
+    parser.add_argument("--video_ids", type=int, nargs='+', default=None,
+                        help="Specific video IDs to use (e.g., --video_ids 1 2 3 4 5). Overrides --max_videos for explicit control.")
     parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for video selection (default: 42). Use different seeds for train/val/test splits")
+                        help="Random seed for video selection (default: 42). Only used with --max_videos.")
     
     args = parser.parse_args()
     
@@ -191,7 +228,7 @@ if __name__ == "__main__":
     print(f"Found Cholec80 data at: {args.data_root}")
     
     # Create manifest CSV
-    create_manifest(args.data_root, manifest_csv, max_videos=args.max_videos, seed=args.seed)
+    create_manifest(args.data_root, manifest_csv, max_videos=args.max_videos, video_ids=args.video_ids, seed=args.seed)
     
     print(f"\n{'='*60}")
     print("DATASET READY FOR PYTORCH!")

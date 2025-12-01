@@ -89,9 +89,8 @@ class Cholec80Dataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         
-        # Load image and immediately convert to numpy to release file handle
-        with Image.open(row['frame_path']) as pil_img:
-            img = pil_img.convert('RGB')
+        # Load image
+        img = Image.open(row['frame_path']).convert('RGB')
         
         if self.transform:
             img = self.transform(img)
