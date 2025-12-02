@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # !!! USER: PLEASE VERIFY THE PATH TO YOUR TRAINING CSV FILE !!!
     CSV_TRAIN_PATH = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/dataset/cholec80/cholec80_manifest.csv"  # <-- PLEASE VERIFY THIS PATH
     CSV_VAL_PATH = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/dataset/cholec80/cholec80_val.csv"
-    CKPT_PATH = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/tool_results/tool_detection_model.pth"
+    CKPT_PATH = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/tool_results/tool_detection_model_best.pth"
     OUT_DIR = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/tool_results"
     DEVICE = "cpu"
 

@@ -81,6 +81,7 @@ class Cholec80Dataset(Dataset):
         print(f"  - {len(self.df['video_id'].unique())} videos")
         print(f"  - Phase distribution:")
         for phase_id, count in self.df['phase'].value_counts().sort_index().items():
+            phase_id = int(phase_id)  # Convert to int for indexing
             if 0 <= phase_id < len(PHASE_NAMES):
                 print(f"      {phase_id}: {PHASE_NAMES[phase_id]:30s} - {count:6d} frames")
     
