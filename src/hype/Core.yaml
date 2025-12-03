@@ -1,0 +1,29 @@
+# Hyperparameters for GPT-2 Core training
+
+# Data Parameters
+max_length: 512
+batch_size: 8
+
+# Training Parameters
+learning_rate: 0.00005  # 5e-5
+num_epochs: 3
+gradient_accumulation_steps: 4
+
+# Model Paths
+output_dir: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results"
+best_model_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/gpt2_best_model"
+final_model_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/gpt2_final"
+plot_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/training_curves.png"
+
+# Data Paths
+robot_control_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/dataset/Surgical_Robotics/robot_control.json"
+
+# Evaluation Parameters
+eval_sample_size: 100
+generation_max_length: 150
+generation_temperature: 0.7
+generation_top_p: 0.9
+num_test_prompts: 3
+
+# Robot Control Split
+robot_train_split: 0.7  # 70% train, 30% validation
