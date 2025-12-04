@@ -1,3 +1,19 @@
+"""
+GPT-2 Core Model Training Script
+
+Trains a GPT-2 model on combined datasets:
+- DailyDialog: Conversational dialog with emotions and acts
+- Surgical Robotics: Robot control instruction-response pairs
+
+Features:
+- Relative path handling (works on any machine)
+- Weight decay regularization
+- Learning rate scheduling (ReduceLROnPlateau)
+- Early stopping
+- Automatic output directory creation
+- Fixed token accuracy calculation for causal LM
+"""
+
 import json
 import os
 import sys
@@ -7,22 +23,52 @@ import numpy as np
 from collections import Counter
 import yaml
 
-# Load hyperparameters from YAML
-config_path = "/Users/adria/University/SAR-Podcast-Bot/src/hype/Core.yaml"
+# Get script directory and project root
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to project root
+
+# Load hyperparameters from YAML using relative path
+config_path = os.path.join(script_dir, "../hype/Core.yaml")
+if not os.path.exists(config_path):
+    raise FileNotFoundError(f"Config file not found at: {config_path}")
+
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-print("Loaded hyperparameters from Core.yaml")
+print(f"Loaded hyperparameters from: {config_path}")
 
-# Add models directory to path
-sys.path.append('/Users/adria/University/SAR-Podcast-Bot/src/models')
+# Convert relative paths in config to absolute paths
+src_dir = os.path.dirname(script_dir)  # src/ directory
+config['output_dir'] = os.path.join(src_dir, config['output_dir'])
+config['best_model_path'] = os.path.join(src_dir, config['best_model_path'])
+config['final_model_path'] = os.path.join(src_dir, config['final_model_path'])
+config['plot_path'] = os.path.join(src_dir, config['plot_path'])
+config['robot_control_path'] = os.path.join(src_dir, config['robot_control_path'])
+
+# Create output directories if they don't exist
+os.makedirs(config['output_dir'], exist_ok=True)
+os.makedirs(os.path.dirname(config['best_model_path']), exist_ok=True)
+
+# Verify robot control data exists
+if not os.path.exists(config['robot_control_path']):
+    raise FileNotFoundError(f"Robot control data not found at: {config['robot_control_path']}")
+
+print(f"Output directory: {config['output_dir']}")
+print(f"Robot control data: {config['robot_control_path']}")
+
+# Add models directory to path using relative path
+models_dir = os.path.join(script_dir, "../models")
+sys.path.insert(0, models_dir)
 from GPT2 import tokenizer, model, device
 
 ######################### Daily Dialog Data Prep #################################
 
-# Load dialog datasets from local files
-print("Loading DailyDialog dataset from local files...")
-daily_dialog_path = "/Users/adria/University/SAR-Podcast-Bot/src/dataset/DailyDialog"
+# Load dialog datasets from local files using relative paths
+daily_dialog_path = os.path.join(script_dir, "../dataset/DailyDialog")
+if not os.path.exists(daily_dialog_path):
+    raise FileNotFoundError(f"DailyDialog dataset not found at: {daily_dialog_path}")
+
+print(f"Loading DailyDialog dataset from: {daily_dialog_path}")
 
 def load_daily_dialog(data_dir):
     """Load DailyDialog data from text files"""
@@ -205,10 +251,27 @@ print(f"  Training batches per epoch: {len(train_loader)}")
 
 ######################### Training Setup #################################
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from tqdm import tqdm
 
-# Optimizer
-optimizer = AdamW(model.parameters(), lr=config['learning_rate'])
+# Get regularization parameters from config with defaults
+weight_decay = config.get('weight_decay', 0.01)
+early_stopping_patience = config.get('early_stopping_patience', 5)
+lr_scheduler_patience = config.get('lr_scheduler_patience', 2)
+lr_scheduler_factor = config.get('lr_scheduler_factor', 0.5)
+
+# Optimizer with weight decay for regularization
+optimizer = AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=weight_decay)
+
+# Learning rate scheduler - reduces LR when validation loss plateaus
+scheduler = ReduceLROnPlateau(
+    optimizer,
+    mode='min',
+    factor=lr_scheduler_factor,
+    patience=lr_scheduler_patience,
+    verbose=True,
+    min_lr=1e-7
+)
 
 # Move model to device
 model.to(device)
@@ -216,9 +279,13 @@ model.train()
 
 print(f"\nTraining Configuration:")
 print(f"  Learning rate: {config['learning_rate']}")
+print(f"  Weight decay: {weight_decay}")
 print(f"  Epochs: {config['num_epochs']}")
 print(f"  Device: {device}")
 print(f"  Gradient accumulation steps: {config['gradient_accumulation_steps']}")
+print(f"  Early stopping patience: {early_stopping_patience}")
+print(f"  LR scheduler patience: {lr_scheduler_patience}")
+print(f"  LR scheduler factor: {lr_scheduler_factor}")
 
 ######################### Training Loop #################################
 print("\n" + "="*50)
@@ -227,6 +294,8 @@ print("="*50)
 
 # Best model tracking
 best_val_loss = float('inf')
+best_epoch = 0
+epochs_without_improvement = 0
 
 # Lists to store losses for plotting
 train_losses = []
@@ -293,20 +362,37 @@ for epoch in range(config['num_epochs']):
     train_losses.append(avg_train_loss)
     val_losses.append(avg_val_loss)
     
+    # Update learning rate scheduler
+    scheduler.step(avg_val_loss)
+    current_lr = optimizer.param_groups[0]['lr']
+    
     print(f"\nEpoch {epoch+1} Results:")
     print(f"  Average Training Loss: {avg_train_loss:.4f}")
     print(f"  Average Validation Loss: {avg_val_loss:.4f}")
     print(f"  Training Perplexity: {train_perplexity:.2f}")
     print(f"  Validation Perplexity: {val_perplexity:.2f}")
+    print(f"  Current Learning Rate: {current_lr:.2e}")
     
-    # Save best model
+    # Save best model and check for early stopping
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
+        best_epoch = epoch + 1
+        epochs_without_improvement = 0
         print(f"  ✓ New best model! Saving to {config['best_model_path']}")
         model.save_pretrained(config['best_model_path'])
         tokenizer.save_pretrained(config['best_model_path'])
     else:
+        epochs_without_improvement += 1
         print(f"  Validation loss did not improve from {best_val_loss:.4f}")
+        print(f"  Epochs without improvement: {epochs_without_improvement}/{early_stopping_patience}")
+        
+        # Early stopping check
+        if epochs_without_improvement >= early_stopping_patience:
+            print(f"\n{'='*50}")
+            print(f"Early stopping triggered after {epoch+1} epochs")
+            print(f"Best model was at epoch {best_epoch} with validation loss: {best_val_loss:.4f}")
+            print(f"{'='*50}")
+            break
     
     print("-" * 50)
 
@@ -318,7 +404,8 @@ print(f"\n{'='*50}")
 print(f"Training Complete!")
 print(f"Best model saved to: {config['best_model_path']}")
 print(f"Final model saved to: {config['final_model_path']}")
-print(f"Best validation loss: {best_val_loss:.4f}")
+print(f"Best validation loss: {best_val_loss:.4f} (Epoch {best_epoch})")
+print(f"Total epochs trained: {len(train_losses)}")
 print(f"{'='*50}")
 
 ######################### Plot Training Curves #################################
@@ -482,10 +569,15 @@ with torch.no_grad():
         labels = batch[2].to(device)
         
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        predictions = outputs.logits.argmax(dim=-1)
         
-        mask = labels != tokenizer.pad_token_id
-        correct = (predictions == labels) & mask
+        # For causal LM: shift predictions and labels
+        # Model predicts next token, so logits[:, i] predicts labels[:, i+1]
+        shift_logits = outputs.logits[..., :-1, :].contiguous()  # Remove last position
+        shift_labels = labels[..., 1:].contiguous()              # Remove first position
+        
+        predictions = shift_logits.argmax(dim=-1)
+        mask = shift_labels != tokenizer.pad_token_id
+        correct = (predictions == shift_labels) & mask
         correct_tokens += correct.sum().item()
         total_tokens += mask.sum().item()
 

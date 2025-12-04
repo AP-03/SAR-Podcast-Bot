@@ -5,18 +5,22 @@ max_length: 512
 batch_size: 8
 
 # Training Parameters
-learning_rate: 0.00005  # 5e-5
-num_epochs: 3
+learning_rate: 0.00001  # 1e-5
+num_epochs: 15
 gradient_accumulation_steps: 4
+weight_decay: 0.01
+early_stopping_patience: 5
+lr_scheduler_patience: 2
+lr_scheduler_factor: 0.5
 
-# Model Paths
-output_dir: "/Users/adria/University/SAR-Podcast-Bot/src/core_results"
-best_model_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/gpt2_best_model"
-final_model_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/gpt2_final"
-plot_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/training_curves.png"
+# Model Paths (relative to src/ directory)
+output_dir: "results/core_results"
+best_model_path: "results/core_results/gpt2_best_model"
+final_model_path: "results/core_results/gpt2_final"
+plot_path: "results/core_results/training_curves.png"
 
-# Data Paths
-robot_control_path: "/Users/adria/University/SAR-Podcast-Bot/src/dataset/Surgical_Robotics/robot_control.json"
+# Data Paths (relative to src/ directory)
+robot_control_path: "dataset/Surgical_Robotics/robot_control.json"
 
 # Evaluation Parameters
 eval_sample_size: 100
