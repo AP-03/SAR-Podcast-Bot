@@ -10,13 +10,13 @@ num_epochs: 3
 gradient_accumulation_steps: 4
 
 # Model Paths
-output_dir: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results"
-best_model_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/gpt2_best_model"
-final_model_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/gpt2_final"
-plot_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/core_results/training_curves.png"
+output_dir: "/Users/adria/University/SAR-Podcast-Bot/src/core_results"
+best_model_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/gpt2_best_model"
+final_model_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/gpt2_final"
+plot_path: "/Users/adria/University/SAR-Podcast-Bot/src/core_results/training_curves.png"
 
 # Data Paths
-robot_control_path: "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/dataset/Surgical_Robotics/robot_control.json"
+robot_control_path: "/Users/adria/University/SAR-Podcast-Bot/src/dataset/Surgical_Robotics/robot_control.json"
 
 # Evaluation Parameters
 eval_sample_size: 100

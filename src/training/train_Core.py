@@ -1,4 +1,3 @@
-from datasets import load_dataset
 import json
 import os
 import sys
@@ -9,21 +8,21 @@ from collections import Counter
 import yaml
 
 # Load hyperparameters from YAML
-config_path = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/hype/Core.yaml"
+config_path = "/Users/adria/University/SAR-Podcast-Bot/src/hype/Core.yaml"
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
 print("Loaded hyperparameters from Core.yaml")
 
 # Add models directory to path
-sys.path.append('/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/models')
+sys.path.append('/Users/adria/University/SAR-Podcast-Bot/src/models')
 from GPT2 import tokenizer, model, device
 
 ######################### Daily Dialog Data Prep #################################
 
 # Load dialog datasets from local files
 print("Loading DailyDialog dataset from local files...")
-daily_dialog_path = "/Users/omarahmed/Desktop/UCL/Year 3/Term 1/Deep Learning/SAR-Podcast-Bot/src/dataset/DailyDialog"
+daily_dialog_path = "/Users/adria/University/SAR-Podcast-Bot/src/dataset/DailyDialog"
 
 def load_daily_dialog(data_dir):
     """Load DailyDialog data from text files"""

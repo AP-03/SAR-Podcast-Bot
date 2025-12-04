@@ -1,0 +1,45 @@
+{
+  "overall_metrics": {
+    "distinct_1": 0.7033898305084746,
+    "distinct_2": 0.9301310043668122,
+    "avg_response_length": 33.714285714285715,
+    "token_accuracy": 0.0,
+    "total_tokens_evaluated": 5412
+  },
+  "dialog_metrics": {
+    "distinct_1": 0.6865671641791045,
+    "distinct_2": 0.859375,
+    "avg_response_length": 22.333333333333332,
+    "num_test_prompts": 3
+  },
+  "robotics_metrics": {
+    "distinct_1": 0.7337278106508875,
+    "distinct_2": 0.9575757575757575,
+    "avg_response_length": 42.25,
+    "num_test_prompts": 4
+  },
+  "test_examples": {
+    "dialog_prompts": [
+      "[Act: 1] [Emotion: 0] Hello, how are you today?",
+      "[Act: 2] [Emotion: 3] I'm feeling really excited about this project!",
+      "[Act: 4] [Emotion: 1] Could you help me with this problem?"
+    ],
+    "dialog_responses": [
+      "[Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Fine , thanks . ",
+      "[Act: 2] [Emotion: 3] I'm feeling really excited about this project!  [Act: 1] [Emotion: 0]  You're joking , but I think we should get together and do some more research . ",
+      "[Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 2] [Emotion: 0]  What's the problem ? "
+    ],
+    "robotics_prompts": [
+      "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+      "Explain the control theory behind robotic Dissection.",
+      "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
+      "Why is the robotic approach to 'Clipping/Cutting' considered safer?"
+    ],
+    "robotics_responses": [
+      "The vision system detects 'Preparation'. What robotic algorithm applies here? For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment.",
+      "Explain the control theory behind robotic Dissection. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.",
+      "The vision system detects the tool 'Grasper'. What is the robotic equivalent? You are seeing a manual Grasper. In a robotic system, the equivalent uses **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics\u2014analyzing tissue deformation in the video to estimate force.",
+      "Why is the robotic approach to 'Clipping/Cutting' considered safer? Safety during Clipping/Cutting is improved by **Tremor Filtration**, because Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly."
+    ]
+  }
+}
