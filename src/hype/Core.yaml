@@ -5,13 +5,19 @@ max_length: 512
 batch_size: 8
 
 # Training Parameters
-learning_rate: 0.00001  # 1e-5
+learning_rate: 0.0001  # 1e-4 (higher for LoRA)
 num_epochs: 15
 gradient_accumulation_steps: 4
 weight_decay: 0.01
 early_stopping_patience: 5
 lr_scheduler_patience: 2
 lr_scheduler_factor: 0.5
+
+# LoRA Parameters (Low-Rank Adaptation)
+use_lora: true
+lora_r: 8  # Rank of low-rank matrices (higher = more capacity, 4-16 typical)
+lora_alpha: 32  # Scaling factor (typically 2-4x the rank)
+lora_dropout: 0.3  # Dropout for LoRA layers
 
 # Model Paths (relative to src/ directory)
 output_dir: "results/core_results"

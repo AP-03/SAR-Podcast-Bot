@@ -6,12 +6,16 @@ Trains a GPT-2 model on combined datasets:
 - Surgical Robotics: Robot control instruction-response pairs
 
 Features:
+- LoRA (Low-Rank Adaptation) for efficient fine-tuning
 - Relative path handling (works on any machine)
 - Weight decay regularization
 - Learning rate scheduling (ReduceLROnPlateau)
 - Early stopping
 - Automatic output directory creation
 - Fixed token accuracy calculation for causal LM
+
+Requirements:
+- pip install transformers torch peft
 """
 
 import json
@@ -22,6 +26,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import yaml
+
+# Suppress tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Get script directory and project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -61,6 +68,17 @@ models_dir = os.path.join(script_dir, "../models")
 sys.path.insert(0, models_dir)
 from GPT2 import tokenizer, model, device
 
+# Check if model is using LoRA
+try:
+    from peft import PeftModel
+    if isinstance(model, PeftModel):
+        print("\n✓ Model is using LoRA (Low-Rank Adaptation)")
+        print("  This reduces trainable parameters by ~99% and prevents overfitting!")
+    else:
+        print("\n⚠️  Model is using full fine-tuning (all parameters)")
+except ImportError:
+    print("\n⚠️  PEFT not installed. Install with: pip install peft")
+
 ######################### Daily Dialog Data Prep #################################
 
 # Load dialog datasets from local files using relative paths
@@ -70,31 +88,53 @@ if not os.path.exists(daily_dialog_path):
 
 print(f"Loading DailyDialog dataset from: {daily_dialog_path}")
 
-def load_daily_dialog(data_dir):
-    """Load DailyDialog data from text files"""
-    utterances = []
-    acts = []
-    emotions = []
+def load_daily_dialog_split(base_dir, train_folder='train', val_folder='validation'):
+    """Load both training and validation DailyDialog data
     
-    with open(os.path.join(data_dir, 'dialogues_train.txt' if 'train' in data_dir else 'dialogues_validation.txt'), 'r', encoding='utf-8') as f:
-        for line in f:
-            utterances.append(line.strip().split('__eou__')[:-1])  # Split by utterance delimiter
+    Args:
+        base_dir: Base DailyDialog directory containing train/ and validation/ folders
+        train_folder: Name of training subfolder (default: 'train')
+        val_folder: Name of validation subfolder (default: 'validation')
     
-    with open(os.path.join(data_dir, 'dialogues_act_train.txt' if 'train' in data_dir else 'dialogues_act_validation.txt'), 'r', encoding='utf-8') as f:
-        for line in f:
-            acts.append([int(a) for a in line.strip().split()])
+    Returns:
+        Tuple of (train_data, val_data) where each is (utterances, acts, emotions)
+    """
+    def load_split(folder, prefix):
+        utterances = []
+        acts = []
+        emotions = []
+        
+        dialog_file = os.path.join(base_dir, folder, f'dialogues_{prefix}.txt')
+        act_file = os.path.join(base_dir, folder, f'dialogues_act_{prefix}.txt')
+        emotion_file = os.path.join(base_dir, folder, f'dialogues_emotion_{prefix}.txt')
+        
+        # Verify files exist
+        for filepath in [dialog_file, act_file, emotion_file]:
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"Required file not found: {filepath}")
+        
+        with open(dialog_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                utterances.append(line.strip().split('__eou__')[:-1])
+        
+        with open(act_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                acts.append([int(a) for a in line.strip().split()])
+        
+        with open(emotion_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                emotions.append([int(e) for e in line.strip().split()])
+        
+        return utterances, acts, emotions
     
-    with open(os.path.join(data_dir, 'dialogues_emotion_train.txt' if 'train' in data_dir else 'dialogues_emotion_validation.txt'), 'r', encoding='utf-8') as f:
-        for line in f:
-            emotions.append([int(e) for e in line.strip().split()])
+    # Load both splits
+    train_data = load_split(train_folder, 'train')
+    val_data = load_split(val_folder, 'validation')
     
-    return utterances, acts, emotions
+    return train_data, val_data
 
-# Load training data
-train_utterances, train_acts, train_emotions = load_daily_dialog(os.path.join(daily_dialog_path, 'train'))
-
-# Load validation data
-val_utterances, val_acts, val_emotions = load_daily_dialog(os.path.join(daily_dialog_path, 'validation'))
+# Load both training and validation data in one call
+(train_utterances, train_acts, train_emotions), (val_utterances, val_acts, val_emotions) = load_daily_dialog_split(daily_dialog_path)
 
 print(f"Loaded {len(train_utterances)} training dialogs and {len(val_utterances)} validation dialogs")
 
@@ -269,7 +309,6 @@ scheduler = ReduceLROnPlateau(
     mode='min',
     factor=lr_scheduler_factor,
     patience=lr_scheduler_patience,
-    verbose=True,
     min_lr=1e-7
 )
 
