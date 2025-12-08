@@ -26,8 +26,8 @@ except ImportError:
     BERTSCORE_AVAILABLE = False
 
 
-def load_daily_dialog(base_dir, split='validation'):
-    """Load DailyDialog validation data"""
+def load_daily_dialog(base_dir, split='test'):
+    """Load DailyDialog test data"""
     dialog_file = os.path.join(base_dir, split, f'dialogues_{split}.txt')
     
     if not os.path.exists(dialog_file):
@@ -403,8 +403,8 @@ def main():
     # Load datasets
     print("\nLoading datasets...")
     try:
-        dialog_pairs = load_daily_dialog(daily_dialog_path, split='validation')
-        print(f"✓ Loaded {len(dialog_pairs)} DailyDialog validation pairs")
+        dialog_pairs = load_daily_dialog(daily_dialog_path, split='test')
+        print(f"✓ Loaded {len(dialog_pairs)} DailyDialog test pairs")
     except Exception as e:
         print(f"✗ Error loading DailyDialog: {e}")
         dialog_pairs = []
