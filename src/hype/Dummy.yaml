@@ -1,0 +1,38 @@
+# Hyperparameters for Dummy LSTM Language Model Training
+
+# Data Parameters
+max_length: 512
+batch_size: 8
+
+# Training Parameters
+learning_rate: 0.01  # Higher LR for SGD
+num_epochs: 10
+# No gradient accumulation - just simple batches
+# No weight decay - no regularization
+# No early stopping - train all epochs
+# No LR scheduling - fixed learning rate
+
+# Model Architecture
+embed_dim: 256
+hidden_dim: 512
+num_layers: 2
+dropout: 0.3
+
+# Model Paths (relative to src/ directory)
+output_dir: "results/dummy_results"
+best_model_path: "results/dummy_results/lstm_best_model"
+final_model_path: "results/dummy_results/lstm_final"
+plot_path: "results/dummy_results/training_curves.png"
+
+# Data Paths (relative to src/ directory)
+robot_control_path: "dataset/Surgical_Robotics/robot_control.json"
+
+# Evaluation Parameters
+eval_sample_size: 100
+generation_max_length: 150
+generation_temperature: 0.7
+generation_top_p: 0.9
+num_test_prompts: 3
+
+# Robot Control Split
+robot_train_split: 0.7  # 70% train, 30% validation
