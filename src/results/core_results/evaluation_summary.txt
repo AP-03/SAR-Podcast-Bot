@@ -4,16 +4,16 @@ GPT-2 CORE MODEL EVALUATION SUMMARY
 
 OVERALL METRICS
 ------------------------------------------------------------
-Distinct-1 (unigram diversity): 0.7034
-Distinct-2 (bigram diversity): 0.9301
-Average Response Length: 33.71 tokens
-Token Accuracy: 0.0000
+Distinct-1 (unigram diversity): 0.6721
+Distinct-2 (bigram diversity): 0.9325
+Average Response Length: 34.86 tokens
+Token Accuracy: 0.6581
 
 DIALOG METRICS
 ------------------------------------------------------------
-Distinct-1: 0.6866
-Distinct-2: 0.8594
-Average Length: 22.33 tokens
+Distinct-1: 0.6133
+Distinct-2: 0.8750
+Average Length: 25.00 tokens
 
 SURGICAL ROBOTICS METRICS
 ------------------------------------------------------------
@@ -29,13 +29,13 @@ DIALOG EXAMPLES:
 ------------------------------------------------------------
 
 1. Prompt: [Act: 1] [Emotion: 0] Hello, how are you today?
-   Response: [Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Fine , thanks . 
+   Response: [Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Nice to meet you . 
 
 2. Prompt: [Act: 2] [Emotion: 3] I'm feeling really excited about this project!
-   Response: [Act: 2] [Emotion: 3] I'm feeling really excited about this project!  [Act: 1] [Emotion: 0]  You're joking , but I think we should get together and do some more research . 
+   Response: [Act: 2] [Emotion: 3] I'm feeling really excited about this project! How can I help ?  [Act: 3] [Emotion: 0]  I want to start a company to develop and share the skills with you . 
 
 3. Prompt: [Act: 4] [Emotion: 1] Could you help me with this problem?
-   Response: [Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 2] [Emotion: 0]  What's the problem ? 
+   Response: [Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 3] [Emotion: 0]  I think we could do it . 
 
 ------------------------------------------------------------
 SURGICAL ROBOTICS EXAMPLES:
