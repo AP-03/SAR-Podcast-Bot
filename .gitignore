@@ -13,19 +13,12 @@ dataset/cholec80
 *.7z
 *.csv
 
+
+# Ignore ONLY model weights
+src/core_results/**/*.safetensors
+src/results/core_results/**/*.safetensors
+
 # Machine Learning / Deep Learning
-*.h5
-*.hdf5
-*.npy
-*.npz
-*.pkl
-*.pickle
-*.pt
-*.ckpt
-*.safetensors
-*.onnx
-*.pb
-*.tflite
 
 # Dataset manifests and large CSVs (comment out if you want to track them)
 # *.csv
@@ -114,23 +107,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# ==============================================================================
-# PYTORCH / TENSORFLOW / ML FRAMEWORKS
-# ==============================================================================
-# Model checkpoints
-checkpoints/
-saved_models/
-models/checkpoints/
-*.weights
-runs/
-lightning_logs/
-wandb/
-mlruns/
-
-# TensorBoard logs
-events.out.tfevents.*
-*.tfevents.*
 
 # ==============================================================================
 # JUPYTER NOTEBOOKS

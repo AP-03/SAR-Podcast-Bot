@@ -1,15 +1,15 @@
 {
   "overall_metrics": {
-    "distinct_1": 0.7033898305084746,
-    "distinct_2": 0.9301310043668122,
-    "avg_response_length": 33.714285714285715,
-    "token_accuracy": 0.0,
-    "total_tokens_evaluated": 5412
+    "distinct_1": 0.6721311475409836,
+    "distinct_2": 0.9324894514767933,
+    "avg_response_length": 34.857142857142854,
+    "token_accuracy": 0.6580633006782216,
+    "total_tokens_evaluated": 5308
   },
   "dialog_metrics": {
-    "distinct_1": 0.6865671641791045,
-    "distinct_2": 0.859375,
-    "avg_response_length": 22.333333333333332,
+    "distinct_1": 0.6133333333333333,
+    "distinct_2": 0.875,
+    "avg_response_length": 25.0,
     "num_test_prompts": 3
   },
   "robotics_metrics": {
@@ -25,9 +25,9 @@
       "[Act: 4] [Emotion: 1] Could you help me with this problem?"
     ],
     "dialog_responses": [
-      "[Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Fine , thanks . ",
-      "[Act: 2] [Emotion: 3] I'm feeling really excited about this project!  [Act: 1] [Emotion: 0]  You're joking , but I think we should get together and do some more research . ",
-      "[Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 2] [Emotion: 0]  What's the problem ? "
+      "[Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Nice to meet you . ",
+      "[Act: 2] [Emotion: 3] I'm feeling really excited about this project! How can I help ?  [Act: 3] [Emotion: 0]  I want to start a company to develop and share the skills with you . ",
+      "[Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 3] [Emotion: 0]  I think we could do it . "
     ],
     "robotics_prompts": [
       "The vision system detects 'Preparation'. What robotic algorithm applies here?",
