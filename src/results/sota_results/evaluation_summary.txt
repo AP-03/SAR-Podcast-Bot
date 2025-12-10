@@ -1,0 +1,29 @@
+============================================================
+GPT-4o SOTA Model Evaluation Summary
+============================================================
+
+DailyDialog Results:
+  BLEU Score:          0.0803
+  BERTScore Precision: 0.8244
+  BERTScore Recall:    0.8370
+  BERTScore F1:        0.8305
+  Hallucination Rate:  0.0955
+  Distinct-1:          0.3202
+  Distinct-2:          0.7345
+  Avg Latency:         1.737s
+  Min Latency:         0.613s
+  Max Latency:         6.042s
+  Samples:             100
+
+Surgical Robotics Results:
+  BLEU Score:          0.2070
+  BERTScore Precision: 0.8208
+  BERTScore Recall:    0.8516
+  BERTScore F1:        0.8358
+  Hallucination Rate:  0.4560
+  Distinct-1:          0.2127
+  Distinct-2:          0.5954
+  Avg Latency:         4.789s
+  Min Latency:         2.197s
+  Max Latency:         9.490s
+  Samples:             50
