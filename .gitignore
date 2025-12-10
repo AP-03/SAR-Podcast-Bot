@@ -243,3 +243,34 @@ temp/
 # Debug files
 debug/
 *.debug
+
+# ==============================================================================
+# MACHINE LEARNING MODEL FILES
+# ==============================================================================
+# PyTorch model checkpoints and features
+*.pt
+*.pth
+*.ckpt
+
+# Model results and checkpoints
+src/results/*/gpt2_*/
+src/results/tool_results/*.pt
+src/results/phase_results/*.pth
+
+# Large tokenizer files
+src/results/*/gpt2_*/tokenizer.json
+src/results/*/gpt2_*/merges.txt
+src/results/*/gpt2_*/vocab.json
+
+# TensorFlow/Keras
+*.h5
+*.hdf5
+*.pb
+saved_model/
+
+# ONNX
+*.onnx
+
+# Weights
+*.weights
+*.safetensors

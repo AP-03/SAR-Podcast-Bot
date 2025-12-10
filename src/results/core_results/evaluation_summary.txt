@@ -1,54 +1,29 @@
 ============================================================
-GPT-2 CORE MODEL EVALUATION SUMMARY
+GPT-2 Core Model Evaluation Summary
 ============================================================
 
-OVERALL METRICS
-------------------------------------------------------------
-Distinct-1 (unigram diversity): 0.6721
-Distinct-2 (bigram diversity): 0.9325
-Average Response Length: 34.86 tokens
-Token Accuracy: 0.6581
+DailyDialog Results:
+  BLEU Score:          0.2613
+  BERTScore Precision: 0.7401
+  BERTScore Recall:    0.8482
+  BERTScore F1:        0.7895
+  Hallucination Rate:  0.1260
+  Distinct-1:          0.1144
+  Distinct-2:          0.3381
+  Avg Latency:         1.828s
+  Min Latency:         1.271s
+  Max Latency:         2.533s
+  Samples:             100
 
-DIALOG METRICS
-------------------------------------------------------------
-Distinct-1: 0.6133
-Distinct-2: 0.8750
-Average Length: 25.00 tokens
-
-SURGICAL ROBOTICS METRICS
-------------------------------------------------------------
-Distinct-1: 0.7337
-Distinct-2: 0.9576
-Average Length: 42.25 tokens
-
-============================================================
-SAMPLE RESPONSES
-============================================================
-
-DIALOG EXAMPLES:
-------------------------------------------------------------
-
-1. Prompt: [Act: 1] [Emotion: 0] Hello, how are you today?
-   Response: [Act: 1] [Emotion: 0] Hello, how are you today?  [Act: 1] [Emotion: 0]  Nice to meet you . 
-
-2. Prompt: [Act: 2] [Emotion: 3] I'm feeling really excited about this project!
-   Response: [Act: 2] [Emotion: 3] I'm feeling really excited about this project! How can I help ?  [Act: 3] [Emotion: 0]  I want to start a company to develop and share the skills with you . 
-
-3. Prompt: [Act: 4] [Emotion: 1] Could you help me with this problem?
-   Response: [Act: 4] [Emotion: 1] Could you help me with this problem?  [Act: 3] [Emotion: 0]  I think we could do it . 
-
-------------------------------------------------------------
-SURGICAL ROBOTICS EXAMPLES:
-------------------------------------------------------------
-
-1. Prompt: The vision system detects 'Preparation'. What robotic algorithm applies here?
-   Response: The vision system detects 'Preparation'. What robotic algorithm applies here? For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment.
-
-2. Prompt: Explain the control theory behind robotic Dissection.
-   Response: Explain the control theory behind robotic Dissection. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
-
-3. Prompt: The vision system detects the tool 'Grasper'. What is the robotic equivalent?
-   Response: The vision system detects the tool 'Grasper'. What is the robotic equivalent? You are seeing a manual Grasper. In a robotic system, the equivalent uses **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics—analyzing tissue deformation in the video to estimate force.
-
-4. Prompt: Why is the robotic approach to 'Clipping/Cutting' considered safer?
-   Response: Why is the robotic approach to 'Clipping/Cutting' considered safer? Safety during Clipping/Cutting is improved by **Tremor Filtration**, because Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly.
+Surgical Robotics Results:
+  BLEU Score:          0.4009
+  BERTScore Precision: 0.7102
+  BERTScore Recall:    0.7776
+  BERTScore F1:        0.7417
+  Hallucination Rate:  0.2660
+  Distinct-1:          0.0612
+  Distinct-2:          0.1422
+  Avg Latency:         2.283s
+  Min Latency:         0.025s
+  Max Latency:         3.084s
+  Samples:             50

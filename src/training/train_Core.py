@@ -178,14 +178,31 @@ dialog_val_combined = [inst + " " + resp for inst, resp in zip(dialog_val_instru
 dialog_train_encodings = tokenizer(dialog_train_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
 dialog_val_encodings = tokenizer(dialog_val_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
 
-# For causal LM, input_ids and labels are the same (model learns to predict next token)
+# Create labels with instruction tokens masked (model only learns to predict response)
 dialog_train_input_ids = dialog_train_encodings['input_ids']
 dialog_train_attention_mask = dialog_train_encodings['attention_mask']
 dialog_train_labels = dialog_train_encodings['input_ids'].clone()
 
+# Mask instruction tokens in labels with -100 (ignored in loss)
+for i, (inst, resp) in enumerate(zip(dialog_train_instructions, dialog_train_responses)):
+    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
+    inst_len = len(inst_tokens)
+    # Mask the instruction portion (including the space after it)
+    dialog_train_labels[i, :inst_len+1] = -100
+    # Also mask padding tokens with -100
+    dialog_train_labels[i, dialog_train_attention_mask[i] == 0] = -100
+
 dialog_val_input_ids = dialog_val_encodings['input_ids']
 dialog_val_attention_mask = dialog_val_encodings['attention_mask']
 dialog_val_labels = dialog_val_encodings['input_ids'].clone()
+
+# Mask instruction tokens in validation labels
+for i, (inst, resp) in enumerate(zip(dialog_val_instructions, dialog_val_responses)):
+    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
+    inst_len = len(inst_tokens)
+    dialog_val_labels[i, :inst_len+1] = -100
+    # Also mask padding tokens with -100
+    dialog_val_labels[i, dialog_val_attention_mask[i] == 0] = -100
 
 print(f"Daily Dialog Data:")
 print(f"  Training pairs: {len(dialog_train_instructions)}")
@@ -206,10 +223,19 @@ responses = [item['response'] for item in robot_control_data]
 robot_combined = [inst + " " + resp for inst, resp in zip(instructions, responses)]
 robot_encodings = tokenizer(robot_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
 
-# Create input and target tensors (same for causal LM)
+# Create input and target tensors with instruction tokens masked
 input_ids = robot_encodings['input_ids']
 attention_mask = robot_encodings['attention_mask']
 labels = robot_encodings['input_ids'].clone()
+
+# Mask instruction tokens in labels with -100 (ignored in loss)
+for i, (inst, resp) in enumerate(zip(instructions, responses)):
+    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
+    inst_len = len(inst_tokens)
+    # Mask the instruction portion (including the space after it)
+    labels[i, :inst_len+1] = -100
+    # Also mask padding tokens with -100
+    labels[i, attention_mask[i] == 0] = -100
 
 # Split into train/val
 total_samples = len(robot_control_data)
@@ -245,7 +271,8 @@ def collate_fn(batch):
     # Pad sequences
     input_ids_padded = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
     attention_masks_padded = pad_sequence(attention_masks, batch_first=True, padding_value=0)
-    labels_padded = pad_sequence(labels, batch_first=True, padding_value=tokenizer.pad_token_id)
+    # CRITICAL: Pad labels with -100 (ignored in loss) not pad_token_id
+    labels_padded = pad_sequence(labels, batch_first=True, padding_value=-100)
     
     return input_ids_padded, attention_masks_padded, labels_padded
 
