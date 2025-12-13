@@ -26,7 +26,19 @@ sys.path.insert(0, project_root)
 from models.tool_resnet import ToolCNN
 from models.action_LSTM import ActionLSTMWithAttention
 from dataset.transform import get_basic_transforms
+
 from configs.labels import PHASES, TOOLS
+
+# Phase-to-tool mapping for phase-aware tool accuracy
+PHASE_TO_TOOLS = {
+    'Preparation': ['Grasper'],
+    'CalotTriangleDissection': ['Grasper', 'Hook'],
+    'ClippingCutting': ['Grasper', 'Clipper', 'Scissors'],
+    'GallbladderDissection': ['Hook', 'Grasper'],
+    'GallbladderRetraction': ['Grasper', 'SpecimenBag'],
+    'CleaningCoagulation': ['Grasper', 'Irrigator', 'SpecimenBag', 'Bipolar'],
+    'GallbladderPackaging': ['SpecimenBag', 'Grasper'],
+}
 
 
 # Map m2cai16 test labels to training labels
@@ -114,6 +126,8 @@ def process_video_cnn(video_path, model, transform, device, sample_rate=1):
         'frame_indices': [],
         'cnn_phase_predictions': [],
         'cnn_phase_confidences': [],
+        'cnn_tool_predictions': [],
+        'cnn_tool_confidences': [],
         'features': []
     }
     
@@ -136,16 +150,19 @@ def process_video_cnn(video_path, model, transform, device, sample_rate=1):
                 
                 # Forward pass
                 tool_logits, phase_logits, features = model(input_tensor, return_features=True)
-                
                 # Get phase predictions
                 phase_probs = torch.softmax(phase_logits, dim=1).cpu().numpy()[0]
                 predicted_phase_idx = phase_probs.argmax()
-                
+                # Get tool predictions
+                tool_probs = torch.softmax(tool_logits, dim=1).cpu().numpy()[0]
+                predicted_tool_idx = tool_probs.argmax()
+                # Store results
                 results['frame_indices'].append(frame_idx)
                 results['cnn_phase_predictions'].append(PHASES[predicted_phase_idx])
                 results['cnn_phase_confidences'].append(phase_probs[predicted_phase_idx])
+                results['cnn_tool_predictions'].append(TOOLS[predicted_tool_idx])
+                results['cnn_tool_confidences'].append(tool_probs[predicted_tool_idx])
                 results['features'].append(features.cpu().numpy()[0])
-                
                 pbar.update(1)
             
             frame_idx += 1
@@ -385,7 +402,15 @@ def evaluate_single_video(video_num, args, cnn_model, lstm_model, device, result
     # Evaluate CNN predictions
     print("\n  [CNN] Evaluating predictions...")
     cnn_metrics = evaluate_predictions(gt_labels, cnn_results['cnn_phase_predictions'], "CNN")
-    
+    # Phase-aware tool accuracy (using ground truth phase)
+    phase_tool_correct = 0
+    phase_tool_total = 0
+    for gt_phase, pred_tool in zip(gt_labels, cnn_results['cnn_tool_predictions']):
+        if pred_tool in PHASE_TO_TOOLS.get(gt_phase, []):
+            phase_tool_correct += 1
+        phase_tool_total += 1
+    phase_tool_acc = phase_tool_correct / phase_tool_total if phase_tool_total > 0 else 0
+    print(f"  Phase-aware tool accuracy (GT phase): {phase_tool_acc:.4f}")
     # Plot CNN confusion matrix
     plot_confusion_matrix(cnn_metrics['confusion_matrix'], "CNN", video_name, results_dir)
     
