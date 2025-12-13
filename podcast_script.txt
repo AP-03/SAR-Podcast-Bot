@@ -1,3 +1,47 @@
 ======================================================================
-SURGICAL VIDEO ANALYSIS (Knowledge Base Only)
+SAR-PODCAST-BOT: AI-POWERED SURGICAL NARRATION
+======================================================================
+
+Video: test_workflow_video_01_evaluation
+Total Duration: 00:00
+Phases Detected: 0
+
+----------------------------------------------------------------------
+INTRODUCTION
+----------------------------------------------------------------------
+
+Welcome to this AI-assisted surgical education session. Today, our
+computer vision system will analyze a laparoscopic cholecystectomy
+(gallbladder removal) and explain how robotic surgical systems would
+approach each phase using advanced control algorithms.
+
+----------------------------------------------------------------------
+PHASE-BY-PHASE ANALYSIS
+----------------------------------------------------------------------
+
+----------------------------------------------------------------------
+AI LITERACY DISCUSSION
+----------------------------------------------------------------------
+
+Q: How does a computer learn to recognize surgical phases?
+A: Safety is enhanced because **EndoWrist (7 DOFs)** allows for greater precision. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind.
+
+Q: Can AI in surgery make mistakes? How do we prevent errors?
+A: Safety is enhanced because **EndoWrist (7 DOFs)** allows for greater precision. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind.
+
+Q: Will AI replace surgeons in the future?
+A: It is challenging but possible. To automate the Clipper, an AI would need to perfectly master **Articulated Clip Applier** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action.
+
+----------------------------------------------------------------------
+CONCLUSION
+----------------------------------------------------------------------
+
+This demonstration showed how AI vision systems can analyze surgical
+video in real-time, identifying phases and tools while explaining
+the robotic control concepts that enable safer, more precise surgery.
+
+Key technologies covered:
+
+======================================================================
+END OF NARRATION
 ======================================================================
