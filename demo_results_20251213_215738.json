@@ -1,0 +1,72 @@
+[
+  {
+    "timestamp": "2025-12-13T21:57:33.615424",
+    "question": "How does a computer learn?",
+    "response": "A computer learns through a process similar to how we learn from examples. \nImagine showing a child thousands of pictures of cats and dogs. Eventually, \nthey learn to tell them apart. Neural networks work the same way - we feed \nthem millions of examples, and they gradually adjust their internal \n\"weights\" to recognize patterns. Each time they make a mistake, they adjust \nslightly to do better next time. This is called \"training\" and it's why AI \nneeds so much data and computing power.",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:57:33.615739",
+    "question": "How can I explain to my grandmother what is a Neural Network?",
+    "response": "Think of a neural network like a very complex game of \"telephone.\" You \nwhisper something to the first person, they interpret it and pass it on, \nand by the end, you get a result. Each person in the chain is like a \n\"neuron\" - they take input, process it slightly, and pass it forward. \nIn a computer, these \"neurons\" are just math equations. The magic is that \nby having millions of these simple operations working together, the \nnetwork can learn to recognize faces, understand speech, or even help \ndoctors analyze medical images.",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:57:33.616050",
+    "question": "Why do we need a lot of computational resources to process AI methods?",
+    "response": "AI needs lots of computing power for the same reason training for a \nmarathon takes time - it's doing billions of calculations. When training \na model, we're adjusting millions or even billions of numbers (called \n\"weights\") very slightly, over and over again, using huge amounts of data. \nModern GPUs can do trillions of these calculations per second, but even \nthen, training large models can take weeks. For example, training GPT-3 \nreportedly used enough electricity to power a home for decades!",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:57:35.157288",
+    "question": "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+    "response": "For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:57:36.219134",
+    "question": "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
+    "response": "You are seeing a manual Grasper. In a robotic system, the equivalent uses **Haptic Feedback Simulation**. Robots lack touch. To compensate for this Grasper, algorithms use Visual Haptics—analyzing tissue deformation in the video to estimate force.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:57:36.998342",
+    "question": "Explain the control theory behind robotic Dissection.",
+    "response": "Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:57:38.103017",
+    "question": "Why is the robotic approach to 'Clipping/Cutting' considered safer?",
+    "response": "Safety during Clipping/Cutting is improved by **Tremor Filtration**, because Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:57:38.103562",
+    "question": "Will AI take over?",
+    "response": "This is a common concern, but let's be realistic. Current AI, including \nwhat we've built here, is \"narrow AI\" - it can only do specific tasks it \nwas trained for. Our surgical vision system can recognize tools and phases, \nbut it can't make coffee or write poetry. True \"general AI\" that matches \nhuman intelligence doesn't exist yet and may not for decades. The real \nconcern isn't AI taking over, but ensuring AI is used responsibly and \nthat its benefits are shared fairly across society.",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:57:38.103970",
+    "question": "Can everyone benefit from AI?",
+    "response": "AI has the potential to benefit everyone, but there are challenges. \nPositive examples include: AI helping doctors diagnose diseases earlier, \nmaking education more accessible, and automating dangerous jobs. However, \nwe must address issues like: job displacement in certain sectors, \nalgorithmic bias if training data is unrepresentative, and ensuring \ndeveloping countries aren't left behind. The key is thoughtful policy, \ninclusive development, and education - like what we're doing in this \npodcast!",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:57:38.104398",
+    "question": "How to prevent AI from being wrongly used?",
+    "response": "Preventing AI misuse requires a multi-layered approach: First, technical \nsafeguards like the ones built into systems like ours - we can't make our \nbot do things outside its training. Second, ethical guidelines and \nregulations, like the EU's AI Act. Third, transparency - knowing how AI \nmakes decisions. Fourth, education - the more people understand AI, the \nbetter they can spot misuse. Finally, diverse teams building AI help \ncatch blind spots and biases before deployment.",
+    "source": "Knowledge Base",
+    "is_surgical": false
+  }
+]

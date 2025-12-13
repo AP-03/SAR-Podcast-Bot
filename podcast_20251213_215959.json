@@ -1,0 +1,30 @@
+[
+  {
+    "timestamp": "2025-12-13T21:58:36.321221",
+    "question": "How are you",
+    "response": "determined how robotic 'Gallbladder Packaging' determines surgical safety? Safety during Gallbladder Packaging is improved by **Master-Slave Teleoperation**, because Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands.",
+    "source": "GPT-2 (fallback)",
+    "is_surgical": false
+  },
+  {
+    "timestamp": "2025-12-13T21:59:02.352397",
+    "question": "How would I approach performing this surgical procedure by phase",
+    "response": "2? Safety during Dissection is enhanced because **Motion Scaling** allows for greater precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:59:34.486528",
+    "question": "What robotics algorithm applies to each stage of this surgery",
+    "response": "? It is challenging but possible. To automate the Grasper, an AI would need to perfectly master **Haptic Feedback Simulation** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action.",
+    "source": "GPT-2 Fine-tuned",
+    "is_surgical": true
+  },
+  {
+    "timestamp": "2025-12-13T21:59:52.409079",
+    "question": "what stages are in this surgery",
+    "response": "considered safer? Safety during Dissection is improved by **Motion Scaling**, because Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.",
+    "source": "GPT-2 (fallback)",
+    "is_surgical": false
+  }
+]

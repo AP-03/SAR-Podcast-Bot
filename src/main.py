@@ -332,11 +332,11 @@ def main():
     
     parser = argparse.ArgumentParser(description="Process surgical video through CNN + LSTM pipeline")
     parser.add_argument('--video', type=str, required=True, help='Path to input video file')
-    parser.add_argument('--cnn-model', type=str, default='results/tool_results/tool_detection_model_best.pth',
+    parser.add_argument('--cnn-model', type=str, default='src/results/tool_results/tool_detection_model_best.pth',
                        help='Path to trained CNN checkpoint')
-    parser.add_argument('--lstm-model', type=str, default='results/phase_results/best_lstm_attention_model.pth',
+    parser.add_argument('--lstm-model', type=str, default='src/results/phase_results/best_lstm_attention_model.pth',
                        help='Path to trained LSTM checkpoint')
-    parser.add_argument('--output', type=str, default='results/final_predictions.npz',
+    parser.add_argument('--output', type=str, default='src/results/final_predictions.npz',
                        help='Output path for predictions')
     parser.add_argument('--sample-rate', type=int, default=1,
                        help='Process every Nth frame (default: 1)')
