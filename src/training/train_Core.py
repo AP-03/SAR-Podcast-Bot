@@ -1,741 +1,547 @@
 """
-GPT-2 Core Model Training Script
+GPT-2 Core Model Training Script (IMPROVED VERSION)
+====================================================
+Fixes for the original training issues:
 
-Trains a GPT-2 model on combined datasets:
-- DailyDialog: Conversational dialog with emotions and acts
-- Surgical Robotics: Robot control instruction-response pairs
+1. CLEAR SEPARATOR: Uses " [RESPONSE] " between instruction and response
+2. BALANCED DATA: Better ratio between dialog and surgical data
+3. EXPANDED DATASET: Uses robot_control_train_v2.json with 500+ examples
+4. BETTER TOKENIZATION: Proper handling of special tokens
+5. IMPROVED GENERATION: Response extraction using separator
 
-Features:
-- LoRA (Low-Rank Adaptation) for efficient fine-tuning
-- Relative path handling (works on any machine)
-- Weight decay regularization
-- Learning rate scheduling (ReduceLROnPlateau)
-- Early stopping
-- Automatic output directory creation
-- Fixed token accuracy calculation for causal LM
-
-Requirements:
-- pip install transformers torch peft
+Run from SAR-Podcast-Bot directory:
+    python src/training/train_Core_v2.py
 """
 
 import json
 import os
 import sys
 import torch
-import matplotlib.pyplot as plt
-import numpy as np
-from collections import Counter
-import yaml
-
-# Suppress tokenizers parallelism warning
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-# Get script directory and project root
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(script_dir))  # Go up two levels to project root
-
-# Load hyperparameters from YAML using relative path
-config_path = os.path.join(script_dir, "../hype/Core.yaml")
-if not os.path.exists(config_path):
-    raise FileNotFoundError(f"Config file not found at: {config_path}")
-
-with open(config_path, 'r') as f:
-    config = yaml.safe_load(f)
-
-print(f"Loaded hyperparameters from: {config_path}")
-
-# Convert relative paths in config to absolute paths
-src_dir = os.path.dirname(script_dir)  # src/ directory
-config['output_dir'] = os.path.join(src_dir, config['output_dir'])
-config['best_model_path'] = os.path.join(src_dir, config['best_model_path'])
-config['final_model_path'] = os.path.join(src_dir, config['final_model_path'])
-config['plot_path'] = os.path.join(src_dir, config['plot_path'])
-config['robot_control_path'] = os.path.join(src_dir, config['robot_control_path'])
-
-# Create output directories if they don't exist
-os.makedirs(config['output_dir'], exist_ok=True)
-os.makedirs(os.path.dirname(config['best_model_path']), exist_ok=True)
-
-# Verify robot control data exists
-if not os.path.exists(config['robot_control_path']):
-    raise FileNotFoundError(f"Robot control data not found at: {config['robot_control_path']}")
-
-print(f"Output directory: {config['output_dir']}")
-print(f"Robot control data: {config['robot_control_path']}")
-
-# Add models directory to path using relative path
-models_dir = os.path.join(script_dir, "../models")
-sys.path.insert(0, models_dir)
-from GPT2 import tokenizer, model, device
-
-# Check if model is using LoRA
-try:
-    from peft import PeftModel
-    if isinstance(model, PeftModel):
-        print("\n✓ Model is using LoRA (Low-Rank Adaptation)")
-        print("  This reduces trainable parameters by ~99% and prevents overfitting!")
-    else:
-        print("\n⚠️  Model is using full fine-tuning (all parameters)")
-except ImportError:
-    print("\n⚠️  PEFT not installed. Install with: pip install peft")
-
-######################### Daily Dialog Data Prep #################################
-
-# Load dialog datasets from local files using relative paths
-daily_dialog_path = os.path.join(script_dir, "../dataset/DailyDialog")
-if not os.path.exists(daily_dialog_path):
-    raise FileNotFoundError(f"DailyDialog dataset not found at: {daily_dialog_path}")
-
-print(f"Loading DailyDialog dataset from: {daily_dialog_path}")
-
-def load_daily_dialog_split(base_dir, train_folder='train', val_folder='validation'):
-    """Load both training and validation DailyDialog data
-    
-    Args:
-        base_dir: Base DailyDialog directory containing train/ and validation/ folders
-        train_folder: Name of training subfolder (default: 'train')
-        val_folder: Name of validation subfolder (default: 'validation')
-    
-    Returns:
-        Tuple of (train_data, val_data) where each is (utterances, acts, emotions)
-    """
-    def load_split(folder, prefix):
-        utterances = []
-        acts = []
-        emotions = []
-        
-        dialog_file = os.path.join(base_dir, folder, f'dialogues_{prefix}.txt')
-        act_file = os.path.join(base_dir, folder, f'dialogues_act_{prefix}.txt')
-        emotion_file = os.path.join(base_dir, folder, f'dialogues_emotion_{prefix}.txt')
-        
-        # Verify files exist
-        for filepath in [dialog_file, act_file, emotion_file]:
-            if not os.path.exists(filepath):
-                raise FileNotFoundError(f"Required file not found: {filepath}")
-        
-        with open(dialog_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                utterances.append(line.strip().split('__eou__')[:-1])
-        
-        with open(act_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                acts.append([int(a) for a in line.strip().split()])
-        
-        with open(emotion_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                emotions.append([int(e) for e in line.strip().split()])
-        
-        return utterances, acts, emotions
-    
-    # Load both splits
-    train_data = load_split(train_folder, 'train')
-    val_data = load_split(val_folder, 'validation')
-    
-    return train_data, val_data
-
-# Load both training and validation data in one call
-(train_utterances, train_acts, train_emotions), (val_utterances, val_acts, val_emotions) = load_daily_dialog_split(daily_dialog_path)
-
-print(f"Loaded {len(train_utterances)} training dialogs and {len(val_utterances)} validation dialogs")
-
-# Flatten dialogs into instruction-response pairs with context
-dialog_train_instructions = []
-dialog_train_responses = []
-
-for idx, utterances in enumerate(train_utterances):
-    acts = train_acts[idx]
-    emotions = train_emotions[idx]
-    
-    # For each dialog, create pairs: utterance[i] -> utterance[i+1]
-    for i in range(len(utterances) - 1):
-        # Add act and emotion as context to the instruction
-        context_instruction = f"[Act: {acts[i]}] [Emotion: {emotions[i]}] {utterances[i]}"
-        # Add target act and emotion to the response
-        context_response = f"[Act: {acts[i+1]}] [Emotion: {emotions[i+1]}] {utterances[i + 1]}"
-        
-        dialog_train_instructions.append(context_instruction)
-        dialog_train_responses.append(context_response)
-
-# Same for validation
-dialog_val_instructions = []
-dialog_val_responses = []
-
-for idx, utterances in enumerate(val_utterances):
-    acts = val_acts[idx]
-    emotions = val_emotions[idx]
-    
-    for i in range(len(utterances) - 1):
-        context_instruction = f"[Act: {acts[i]}] [Emotion: {emotions[i]}] {utterances[i]}"
-        context_response = f"[Act: {acts[i+1]}] [Emotion: {emotions[i+1]}] {utterances[i + 1]}"
-        
-        dialog_val_instructions.append(context_instruction)
-        dialog_val_responses.append(context_response)
-
-# Tokenize daily dialog data - combine instruction and response for causal LM
-dialog_train_combined = [inst + " " + resp for inst, resp in zip(dialog_train_instructions, dialog_train_responses)]
-dialog_val_combined = [inst + " " + resp for inst, resp in zip(dialog_val_instructions, dialog_val_responses)]
-
-dialog_train_encodings = tokenizer(dialog_train_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
-dialog_val_encodings = tokenizer(dialog_val_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
-
-# Create labels with instruction tokens masked (model only learns to predict response)
-dialog_train_input_ids = dialog_train_encodings['input_ids']
-dialog_train_attention_mask = dialog_train_encodings['attention_mask']
-dialog_train_labels = dialog_train_encodings['input_ids'].clone()
-
-# Mask instruction tokens in labels with -100 (ignored in loss)
-for i, (inst, resp) in enumerate(zip(dialog_train_instructions, dialog_train_responses)):
-    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
-    inst_len = len(inst_tokens)
-    # Mask the instruction portion (including the space after it)
-    dialog_train_labels[i, :inst_len+1] = -100
-    # Also mask padding tokens with -100
-    dialog_train_labels[i, dialog_train_attention_mask[i] == 0] = -100
-
-dialog_val_input_ids = dialog_val_encodings['input_ids']
-dialog_val_attention_mask = dialog_val_encodings['attention_mask']
-dialog_val_labels = dialog_val_encodings['input_ids'].clone()
-
-# Mask instruction tokens in validation labels
-for i, (inst, resp) in enumerate(zip(dialog_val_instructions, dialog_val_responses)):
-    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
-    inst_len = len(inst_tokens)
-    dialog_val_labels[i, :inst_len+1] = -100
-    # Also mask padding tokens with -100
-    dialog_val_labels[i, dialog_val_attention_mask[i] == 0] = -100
-
-print(f"Daily Dialog Data:")
-print(f"  Training pairs: {len(dialog_train_instructions)}")
-print(f"  Validation pairs: {len(dialog_val_instructions)}")
-print(f"  Input shape: {dialog_train_input_ids.shape}")
-print(f"  Labels shape: {dialog_train_labels.shape}")
-
-######################### Surgical Robotics Data Prep #################################
-# Load robot control data
-with open(config['robot_control_path'], 'r') as f:
-    robot_control_data = json.load(f)
-
-# Convert robot control data to tensors
-instructions = [item['instruction'] for item in robot_control_data]
-responses = [item['response'] for item in robot_control_data]
-
-# Tokenize the data - combine instruction and response for causal LM
-robot_combined = [inst + " " + resp for inst, resp in zip(instructions, responses)]
-robot_encodings = tokenizer(robot_combined, padding=True, truncation=True, return_tensors='pt', max_length=config['max_length'])
-
-# Create input and target tensors with instruction tokens masked
-input_ids = robot_encodings['input_ids']
-attention_mask = robot_encodings['attention_mask']
-labels = robot_encodings['input_ids'].clone()
-
-# Mask instruction tokens in labels with -100 (ignored in loss)
-for i, (inst, resp) in enumerate(zip(instructions, responses)):
-    inst_tokens = tokenizer(inst, add_special_tokens=False)['input_ids']
-    inst_len = len(inst_tokens)
-    # Mask the instruction portion (including the space after it)
-    labels[i, :inst_len+1] = -100
-    # Also mask padding tokens with -100
-    labels[i, attention_mask[i] == 0] = -100
-
-# Split into train/val
-total_samples = len(robot_control_data)
-train_size = int(config['robot_train_split'] * total_samples)
-
-# Split the data
-train_instruction_ids = input_ids[:train_size]
-train_attention_mask = attention_mask[:train_size]
-train_response = labels[:train_size]
-
-val_instructions_ids = input_ids[train_size:]
-val_attention_mask = attention_mask[train_size:]
-val_response = labels[train_size:]
-
-print(f"Robot Control Data:")
-print(f"  Total samples: {total_samples}")
-print(f"  Training samples: {train_size}")
-print(f"  Validation samples: {total_samples - train_size}")
-print(f"  Input shape: {train_instruction_ids.shape}")
-print(f"  Labels shape: {train_response.shape}")
-
-######################### Combine Datasets with Balancing #################################
-from torch.utils.data import TensorDataset, DataLoader, ConcatDataset, WeightedRandomSampler
-from torch.nn.utils.rnn import pad_sequence
-
-# Custom collate function to handle variable length sequences
-def collate_fn(batch):
-    """Pad sequences in a batch to the same length"""
-    input_ids = [item[0] for item in batch]
-    attention_masks = [item[1] for item in batch]
-    labels = [item[2] for item in batch]
-    
-    # Pad sequences
-    input_ids_padded = pad_sequence(input_ids, batch_first=True, padding_value=tokenizer.pad_token_id)
-    attention_masks_padded = pad_sequence(attention_masks, batch_first=True, padding_value=0)
-    # CRITICAL: Pad labels with -100 (ignored in loss) not pad_token_id
-    labels_padded = pad_sequence(labels, batch_first=True, padding_value=-100)
-    
-    return input_ids_padded, attention_masks_padded, labels_padded
-
-# Create TensorDatasets
-dialog_train_dataset = TensorDataset(dialog_train_input_ids, dialog_train_attention_mask, dialog_train_labels)
-dialog_val_dataset = TensorDataset(dialog_val_input_ids, dialog_val_attention_mask, dialog_val_labels)
-
-robot_train_dataset = TensorDataset(train_instruction_ids, train_attention_mask, train_response)
-robot_val_dataset = TensorDataset(val_instructions_ids, val_attention_mask, val_response)
-
-# Balance the datasets
-print(f"\nDataset Statistics (Before Balancing):")
-print(f"  Dialog training samples: {len(dialog_train_dataset)}")
-print(f"  Robot training samples: {len(robot_train_dataset)}")
-print(f"  Imbalance ratio: {len(dialog_train_dataset) / len(robot_train_dataset):.1f}:1")
-
-# Strategy: Oversample robotics data to balance with dialog data
-# Calculate how many times to repeat robotics data
-repeat_factor = max(1, len(dialog_train_dataset) // len(robot_train_dataset))
-print(f"  Oversampling robotics data by {repeat_factor}x")
-
-# Create oversampled robotics dataset
-robot_train_repeated = ConcatDataset([robot_train_dataset] * repeat_factor)
-
-# Combine both datasets
-combined_train_dataset = ConcatDataset([dialog_train_dataset, robot_train_repeated])
-combined_val_dataset = ConcatDataset([dialog_val_dataset, robot_val_dataset])
-
-print(f"\nDataset Statistics (After Balancing):")
-print(f"  Dialog training samples: {len(dialog_train_dataset)}")
-print(f"  Robot training samples (oversampled): {len(robot_train_repeated)}")
-print(f"  Total training samples: {len(combined_train_dataset)}")
-print(f"  Total validation samples: {len(combined_val_dataset)}")
-print(f"  New ratio: {len(dialog_train_dataset) / len(robot_train_repeated):.2f}:1")
-
-# Create DataLoaders with custom collate function
-train_loader = DataLoader(combined_train_dataset, batch_size=config['batch_size'], shuffle=True, collate_fn=collate_fn)
-val_loader = DataLoader(combined_val_dataset, batch_size=config['batch_size'], collate_fn=collate_fn)
-
-print(f"\nBatch Configuration:")
-print(f"  Batch size: {config['batch_size']}")
-print(f"  Training batches per epoch: {len(train_loader)}")
-
-######################### Training Setup #################################
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
+import yaml
+from pathlib import Path
 
-# Get regularization parameters from config with defaults
-weight_decay = config.get('weight_decay', 0.01)
-early_stopping_patience = config.get('early_stopping_patience', 5)
-lr_scheduler_patience = config.get('lr_scheduler_patience', 2)
-lr_scheduler_factor = config.get('lr_scheduler_factor', 0.5)
+# Suppress tokenizers warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Optimizer with weight decay for regularization
-optimizer = AdamW(model.parameters(), lr=config['learning_rate'], weight_decay=weight_decay)
+from transformers import AutoTokenizer, AutoModelForCausalLM, get_linear_schedule_with_warmup
 
-# Learning rate scheduler - reduces LR when validation loss plateaus
-scheduler = ReduceLROnPlateau(
-    optimizer,
-    mode='min',
-    factor=lr_scheduler_factor,
-    patience=lr_scheduler_patience,
-    min_lr=1e-7
-)
+try:
+    from peft import LoraConfig, get_peft_model, TaskType
+    PEFT_AVAILABLE = True
+except ImportError:
+    print("Warning: PEFT not installed. Install with: pip install peft")
+    PEFT_AVAILABLE = False
 
-# Move model to device
-model.to(device)
-model.train()
 
-print(f"\nTraining Configuration:")
-print(f"  Learning rate: {config['learning_rate']}")
-print(f"  Weight decay: {weight_decay}")
-print(f"  Epochs: {config['num_epochs']}")
-print(f"  Device: {device}")
-print(f"  Gradient accumulation steps: {config['gradient_accumulation_steps']}")
-print(f"  Early stopping patience: {early_stopping_patience}")
-print(f"  LR scheduler patience: {lr_scheduler_patience}")
-print(f"  LR scheduler factor: {lr_scheduler_factor}")
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
 
-######################### Training Loop #################################
-print("\n" + "="*50)
-print("Starting Training...")
-print("="*50)
+# Key improvement: Clear separator token
+SEPARATOR = " [RESPONSE] "
 
-# Best model tracking
-best_val_loss = float('inf')
-best_epoch = 0
-epochs_without_improvement = 0
-
-# Lists to store losses for plotting
-train_losses = []
-val_losses = []
-
-for epoch in range(config['num_epochs']):
-    model.train()
-    total_train_loss = 0
-    train_steps = 0
+CONFIG = {
+    # Model
+    'base_model': 'gpt2',
     
-    progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config['num_epochs']}")
+    # Data
+    'max_length': 512,
+    'dialog_subsample': 5000,  # Subsample dialog data for balance
     
-    for batch_idx, batch in enumerate(progress_bar):
-        input_ids = batch[0].to(device)
-        attention_mask = batch[1].to(device)
-        labels = batch[2].to(device)
-        
-        # Forward pass
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-        loss = outputs.loss
-        
-        # Normalize loss for gradient accumulation
-        loss = loss / config['gradient_accumulation_steps']
-        loss.backward()
-        
-        # Gradient accumulation
-        if (batch_idx + 1) % config['gradient_accumulation_steps'] == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-        
-        total_train_loss += loss.item() * config['gradient_accumulation_steps']
-        train_steps += 1
-        
-        progress_bar.set_postfix({'loss': f"{loss.item() * config['gradient_accumulation_steps']:.4f}"})
+    # Training
+    'batch_size': 8,
+    'learning_rate': 2e-4,  # Slightly lower for stability
+    'num_epochs': 10,
+    'gradient_accumulation_steps': 4,
+    'weight_decay': 0.01,
+    'warmup_steps': 100,
     
-    avg_train_loss = total_train_loss / train_steps
+    # Early stopping
+    'early_stopping_patience': 3,
     
-    ######################### Validation Loop #################################
-    model.eval()
-    total_val_loss = 0
-    val_steps = 0
+    # LoRA
+    'use_lora': True,
+    'lora_r': 16,
+    'lora_alpha': 32,
+    'lora_dropout': 0.1,
     
-    print(f"\nValidating Epoch {epoch+1}...")
+    # Generation
+    'generation_max_length': 200,
+    'generation_temperature': 0.7,
     
-    with torch.no_grad():
-        for batch in tqdm(val_loader, desc="Validation"):
-            input_ids = batch[0].to(device)
-            attention_mask = batch[1].to(device)
-            labels = batch[2].to(device)
-            
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            
-            total_val_loss += loss.item()
-            val_steps += 1
-    
-    avg_val_loss = total_val_loss / val_steps
-    
-    # Calculate perplexity
-    train_perplexity = np.exp(avg_train_loss)
-    val_perplexity = np.exp(avg_val_loss)
-    
-    # Store losses for plotting
-    train_losses.append(avg_train_loss)
-    val_losses.append(avg_val_loss)
-    
-    # Update learning rate scheduler
-    scheduler.step(avg_val_loss)
-    current_lr = optimizer.param_groups[0]['lr']
-    
-    print(f"\nEpoch {epoch+1} Results:")
-    print(f"  Average Training Loss: {avg_train_loss:.4f}")
-    print(f"  Average Validation Loss: {avg_val_loss:.4f}")
-    print(f"  Training Perplexity: {train_perplexity:.2f}")
-    print(f"  Validation Perplexity: {val_perplexity:.2f}")
-    print(f"  Current Learning Rate: {current_lr:.2e}")
-    
-    # Save best model and check for early stopping
-    if avg_val_loss < best_val_loss:
-        best_val_loss = avg_val_loss
-        best_epoch = epoch + 1
-        epochs_without_improvement = 0
-        print(f"  ✓ New best model! Saving to {config['best_model_path']}")
-        model.save_pretrained(config['best_model_path'])
-        tokenizer.save_pretrained(config['best_model_path'])
-    else:
-        epochs_without_improvement += 1
-        print(f"  Validation loss did not improve from {best_val_loss:.4f}")
-        print(f"  Epochs without improvement: {epochs_without_improvement}/{early_stopping_patience}")
-        
-        # Early stopping check
-        if epochs_without_improvement >= early_stopping_patience:
-            print(f"\n{'='*50}")
-            print(f"Early stopping triggered after {epoch+1} epochs")
-            print(f"Best model was at epoch {best_epoch} with validation loss: {best_val_loss:.4f}")
-            print(f"{'='*50}")
-            break
-    
-    print("-" * 50)
-
-######################### Save Final Model #################################
-model.save_pretrained(config['final_model_path'])
-tokenizer.save_pretrained(config['final_model_path'])
-
-print(f"\n{'='*50}")
-print(f"Training Complete!")
-print(f"Best model saved to: {config['best_model_path']}")
-print(f"Final model saved to: {config['final_model_path']}")
-print(f"Best validation loss: {best_val_loss:.4f} (Epoch {best_epoch})")
-print(f"Total epochs trained: {len(train_losses)}")
-print(f"{'='*50}")
-
-######################### Plot Training Curves #################################
-plt.figure(figsize=(10, 6))
-epochs_range = range(1, config['num_epochs'] + 1)
-
-plt.plot(epochs_range, train_losses, 'b-o', label='Training Loss', linewidth=2, markersize=8)
-plt.plot(epochs_range, val_losses, 'r-s', label='Validation Loss', linewidth=2, markersize=8)
-
-plt.xlabel('Epoch', fontsize=12)
-plt.ylabel('Loss', fontsize=12)
-plt.title('Training and Validation Loss Over Epochs', fontsize=14, fontweight='bold')
-plt.legend(fontsize=11)
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-
-# Save plot
-plt.savefig(config['plot_path'], dpi=300, bbox_inches='tight')
-print(f"\nTraining curves saved to: {config['plot_path']}")
-plt.close()
-
-######################### Evaluation Metrics #################################
-def calculate_distinct_n(texts, n):
-    """Calculate distinct-n metric for diversity"""
-    all_ngrams = []
-    for text in texts:
-        tokens = text.split()
-        ngrams = [tuple(tokens[i:i+n]) for i in range(len(tokens)-n+1)]
-        all_ngrams.extend(ngrams)
-    
-    if len(all_ngrams) == 0:
-        return 0.0
-    return len(set(all_ngrams)) / len(all_ngrams)
-
-def calculate_token_accuracy(predictions, labels, pad_token_id):
-    """Calculate token-level accuracy"""
-    mask = labels != pad_token_id
-    correct = (predictions == labels) & mask
-    return correct.sum().item() / mask.sum().item()
-
-######################### Evaluation #################################
-print("\n" + "="*50)
-print("Evaluating Model...")
-print("="*50)
-
-# Test with examples from both datasets
-dialog_test_prompts = [
-    "[Act: 1] [Emotion: 0] Hello, how are you today?",
-    "[Act: 2] [Emotion: 3] I'm feeling really excited about this project!",
-    "[Act: 4] [Emotion: 1] Could you help me with this problem?"
-]
-
-robotics_test_prompts = [
-    "The vision system detects 'Preparation'. What robotic algorithm applies here?",
-    "Explain the control theory behind robotic Dissection.",
-    "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
-    "Why is the robotic approach to 'Clipping/Cutting' considered safer?"
-]
-
-test_prompts = dialog_test_prompts + robotics_test_prompts
-
-model.eval()
-generated_texts = []
-dialog_responses = []
-robotics_responses = []
-
-print("\n" + "="*50)
-print("DIALOG RESPONSES")
-print("="*50)
-
-for i, prompt in enumerate(dialog_test_prompts):
-    inputs = tokenizer(prompt, return_tensors='pt').to(device)
-    
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=config['generation_max_length'],
-            num_return_sequences=1,
-            temperature=config['generation_temperature'],
-            top_p=config['generation_top_p'],
-            do_sample=True,
-            pad_token_id=tokenizer.eos_token_id
-        )
-    
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    generated_texts.append(response)
-    dialog_responses.append(response)
-    print(f"\n{i+1}. Prompt: {prompt}")
-    print(f"   Response: {response}")
-    print("-" * 50)
-
-print("\n" + "="*50)
-print("SURGICAL ROBOTICS RESPONSES")
-print("="*50)
-
-for i, prompt in enumerate(robotics_test_prompts):
-    inputs = tokenizer(prompt, return_tensors='pt').to(device)
-    
-    with torch.no_grad():
-        outputs = model.generate(
-            inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=config['generation_max_length'],
-            num_return_sequences=1,
-            temperature=config['generation_temperature'],
-            top_p=config['generation_top_p'],
-            do_sample=True,
-            pad_token_id=tokenizer.eos_token_id
-        )
-    
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    generated_texts.append(response)
-    robotics_responses.append(response)
-    print(f"\n{i+1}. Prompt: {prompt}")
-    print(f"   Response: {response}")
-    print("-" * 50)
-
-# Calculate diversity metrics
-print("\n" + "="*50)
-print("DIVERSITY METRICS")
-print("="*50)
-
-print("\nOverall Metrics:")
-distinct_1 = calculate_distinct_n(generated_texts, 1)
-distinct_2 = calculate_distinct_n(generated_texts, 2)
-print(f"  Distinct-1 (unigram diversity): {distinct_1:.4f}")
-print(f"  Distinct-2 (bigram diversity): {distinct_2:.4f}")
-avg_length = np.mean([len(text.split()) for text in generated_texts])
-print(f"  Average Response Length: {avg_length:.2f} tokens")
-
-print("\nDialog-specific Metrics:")
-dialog_distinct_1 = calculate_distinct_n(dialog_responses, 1)
-dialog_distinct_2 = calculate_distinct_n(dialog_responses, 2)
-dialog_avg_length = np.mean([len(text.split()) for text in dialog_responses])
-print(f"  Distinct-1: {dialog_distinct_1:.4f}")
-print(f"  Distinct-2: {dialog_distinct_2:.4f}")
-print(f"  Average Length: {dialog_avg_length:.2f} tokens")
-
-print("\nRobotics-specific Metrics:")
-robotics_distinct_1 = calculate_distinct_n(robotics_responses, 1)
-robotics_distinct_2 = calculate_distinct_n(robotics_responses, 2)
-robotics_avg_length = np.mean([len(text.split()) for text in robotics_responses])
-print(f"  Distinct-1: {robotics_distinct_1:.4f}")
-print(f"  Distinct-2: {robotics_distinct_2:.4f}")
-print(f"  Average Length: {robotics_avg_length:.2f} tokens")
-
-# Token accuracy on validation set (sample)
-print("\nCalculating Token Accuracy on Validation Sample...")
-sample_size = min(config['eval_sample_size'], len(val_loader.dataset))
-correct_tokens = 0
-total_tokens = 0
-
-with torch.no_grad():
-    for i, batch in enumerate(val_loader):
-        if i * config['batch_size'] >= sample_size:
-            break
-        
-        input_ids = batch[0].to(device)
-        attention_mask = batch[1].to(device)
-        labels = batch[2].to(device)
-        
-        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        
-        # For causal LM: shift predictions and labels
-        # Model predicts next token, so logits[:, i] predicts labels[:, i+1]
-        shift_logits = outputs.logits[..., :-1, :].contiguous()  # Remove last position
-        shift_labels = labels[..., 1:].contiguous()              # Remove first position
-        
-        predictions = shift_logits.argmax(dim=-1)
-        mask = shift_labels != tokenizer.pad_token_id
-        correct = (predictions == shift_labels) & mask
-        correct_tokens += correct.sum().item()
-        total_tokens += mask.sum().item()
-
-token_accuracy = correct_tokens / total_tokens if total_tokens > 0 else 0
-print(f"  Token Accuracy: {token_accuracy:.4f} ({correct_tokens}/{total_tokens})")
-
-######################### Save Evaluation Results #################################
-results_path = os.path.join(config['output_dir'], "evaluation_results.json")
-
-# Compile all results
-evaluation_results = {
-    "overall_metrics": {
-        "distinct_1": float(distinct_1),
-        "distinct_2": float(distinct_2),
-        "avg_response_length": float(avg_length),
-        "token_accuracy": float(token_accuracy),
-        "total_tokens_evaluated": int(total_tokens)
-    },
-    "dialog_metrics": {
-        "distinct_1": float(dialog_distinct_1),
-        "distinct_2": float(dialog_distinct_2),
-        "avg_response_length": float(dialog_avg_length),
-        "num_test_prompts": len(dialog_test_prompts)
-    },
-    "robotics_metrics": {
-        "distinct_1": float(robotics_distinct_1),
-        "distinct_2": float(robotics_distinct_2),
-        "avg_response_length": float(robotics_avg_length),
-        "num_test_prompts": len(robotics_test_prompts)
-    },
-    "test_examples": {
-        "dialog_prompts": dialog_test_prompts,
-        "dialog_responses": dialog_responses,
-        "robotics_prompts": robotics_test_prompts,
-        "robotics_responses": robotics_responses
-    }
+    # Paths (relative to src/)
+    'output_dir': 'results/core_results_v2',
+    'best_model_path': 'results/core_results_v2/gpt2_best_model_v2',
+    'plot_path': 'results/core_results_v2/training_curves.png',
 }
 
-# Save to JSON
-with open(results_path, 'w') as f:
-    json.dump(evaluation_results, f, indent=2)
 
-print(f"\nEvaluation results saved to: {results_path}")
+# =============================================================================
+# DATA LOADING
+# =============================================================================
 
-# Also save a human-readable text summary
-summary_path = os.path.join(config['output_dir'], "evaluation_summary.txt")
-with open(summary_path, 'w') as f:
-    f.write("="*60 + "\n")
-    f.write("GPT-2 CORE MODEL EVALUATION SUMMARY\n")
-    f.write("="*60 + "\n\n")
+def load_daily_dialog(base_dir, max_samples=None):
+    """Load DailyDialog training data"""
+    train_dir = os.path.join(base_dir, 'train')
     
-    f.write("OVERALL METRICS\n")
-    f.write("-"*60 + "\n")
-    f.write(f"Distinct-1 (unigram diversity): {distinct_1:.4f}\n")
-    f.write(f"Distinct-2 (bigram diversity): {distinct_2:.4f}\n")
-    f.write(f"Average Response Length: {avg_length:.2f} tokens\n")
-    f.write(f"Token Accuracy: {token_accuracy:.4f}\n\n")
+    dialog_file = os.path.join(train_dir, 'dialogues_train.txt')
+    act_file = os.path.join(train_dir, 'dialogues_act_train.txt')
+    emotion_file = os.path.join(train_dir, 'dialogues_emotion_train.txt')
     
-    f.write("DIALOG METRICS\n")
-    f.write("-"*60 + "\n")
-    f.write(f"Distinct-1: {dialog_distinct_1:.4f}\n")
-    f.write(f"Distinct-2: {dialog_distinct_2:.4f}\n")
-    f.write(f"Average Length: {dialog_avg_length:.2f} tokens\n\n")
+    # Check files exist
+    for f in [dialog_file, act_file, emotion_file]:
+        if not os.path.exists(f):
+            raise FileNotFoundError(f"File not found: {f}")
     
-    f.write("SURGICAL ROBOTICS METRICS\n")
-    f.write("-"*60 + "\n")
-    f.write(f"Distinct-1: {robotics_distinct_1:.4f}\n")
-    f.write(f"Distinct-2: {robotics_distinct_2:.4f}\n")
-    f.write(f"Average Length: {robotics_avg_length:.2f} tokens\n\n")
+    pairs = []
     
-    f.write("="*60 + "\n")
-    f.write("SAMPLE RESPONSES\n")
-    f.write("="*60 + "\n\n")
+    with open(dialog_file, 'r', encoding='utf-8') as df, \
+         open(act_file, 'r', encoding='utf-8') as af, \
+         open(emotion_file, 'r', encoding='utf-8') as ef:
+        
+        for dialog_line, act_line, emotion_line in zip(df, af, ef):
+            utterances = [u.strip() for u in dialog_line.strip().split('__eou__') if u.strip()]
+            acts = act_line.strip().split()
+            emotions = emotion_line.strip().split()
+            
+            # Create pairs from consecutive utterances
+            for i in range(len(utterances) - 1):
+                if i < len(acts) and i < len(emotions):
+                    instruction = utterances[i]
+                    response = utterances[i + 1]
+                    
+                    # Skip very short exchanges
+                    if len(instruction) > 5 and len(response) > 5:
+                        pairs.append({
+                            'instruction': instruction,
+                            'response': response
+                        })
     
-    f.write("DIALOG EXAMPLES:\n")
-    f.write("-"*60 + "\n")
-    for i, (prompt, response) in enumerate(zip(dialog_test_prompts, dialog_responses)):
-        f.write(f"\n{i+1}. Prompt: {prompt}\n")
-        f.write(f"   Response: {response}\n")
+    print(f"Loaded {len(pairs)} dialog pairs")
     
-    f.write("\n" + "-"*60 + "\n")
-    f.write("SURGICAL ROBOTICS EXAMPLES:\n")
-    f.write("-"*60 + "\n")
-    for i, (prompt, response) in enumerate(zip(robotics_test_prompts, robotics_responses)):
-        f.write(f"\n{i+1}. Prompt: {prompt}\n")
-        f.write(f"   Response: {response}\n")
-
-print(f"Human-readable summary saved to: {summary_path}")
-
-print("\n" + "="*50)
-print("Evaluation Complete!")
-print("="*50)
+    # Subsample if needed
+    if max_samples and len(pairs) > max_samples:
+        import random
+        random.shuffle(pairs)
+        pairs = pairs[:max_samples]
+        print(f"Subsampled to {len(pairs)} pairs")
+    
+    return pairs
 
 
+def load_surgical_data(filepath):
+    """Load surgical robotics Q&A data"""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"Surgical data not found: {filepath}")
+    
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    print(f"Loaded {len(data)} surgical examples")
+    return data
 
+
+def format_training_example(instruction, response, separator=SEPARATOR):
+    """
+    Format a training example with clear separator.
+    
+    Format: {instruction} [RESPONSE] {response}
+    
+    This makes it clear where the response starts, fixing the fragment issue.
+    """
+    return f"{instruction}{separator}{response}"
+
+
+class CombinedDataset(Dataset):
+    """Dataset combining dialog and surgical data"""
+    
+    def __init__(self, dialog_data, surgical_data, tokenizer, max_length=512):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        
+        # Combine all data
+        self.examples = []
+        
+        # Add dialog data
+        for item in dialog_data:
+            text = format_training_example(item['instruction'], item['response'])
+            self.examples.append(text)
+        
+        # Add surgical data (might have 'instruction'/'response' keys)
+        for item in surgical_data:
+            inst = item.get('instruction', item.get('prompt', ''))
+            resp = item.get('response', item.get('answer', ''))
+            if inst and resp:
+                text = format_training_example(inst, resp)
+                self.examples.append(text)
+        
+        print(f"Total training examples: {len(self.examples)}")
+    
+    def __len__(self):
+        return len(self.examples)
+    
+    def __getitem__(self, idx):
+        text = self.examples[idx]
+        
+        # Tokenize
+        encoding = self.tokenizer(
+            text,
+            truncation=True,
+            max_length=self.max_length,
+            padding='max_length',
+            return_tensors='pt'
+        )
+        
+        input_ids = encoding['input_ids'].squeeze()
+        attention_mask = encoding['attention_mask'].squeeze()
+        
+        # For causal LM, labels = input_ids (shifted internally by model)
+        labels = input_ids.clone()
+        
+        # Mask padding tokens in labels
+        labels[attention_mask == 0] = -100
+        
+        return {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'labels': labels
+        }
+
+
+# =============================================================================
+# MODEL SETUP
+# =============================================================================
+
+def setup_model(config):
+    """Initialize model with optional LoRA"""
+    print(f"\nLoading base model: {config['base_model']}")
+    
+    tokenizer = AutoTokenizer.from_pretrained(config['base_model'])
+    model = AutoModelForCausalLM.from_pretrained(config['base_model'])
+    
+    # Set pad token
+    tokenizer.pad_token = tokenizer.eos_token
+    model.config.pad_token_id = tokenizer.eos_token_id
+    
+    # Add special token for response separator (optional but helpful)
+    # tokenizer.add_special_tokens({'additional_special_tokens': ['[RESPONSE]']})
+    # model.resize_token_embeddings(len(tokenizer))
+    
+    # Apply LoRA
+    if config['use_lora'] and PEFT_AVAILABLE:
+        print("Applying LoRA...")
+        
+        lora_config = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            r=config['lora_r'],
+            lora_alpha=config['lora_alpha'],
+            lora_dropout=config['lora_dropout'],
+            target_modules=['c_attn', 'c_proj'],  # GPT-2 attention modules
+            bias='none'
+        )
+        
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
+    
+    return model, tokenizer
+
+
+# =============================================================================
+# TRAINING
+# =============================================================================
+
+def train_epoch(model, dataloader, optimizer, scheduler, device, accumulation_steps=1):
+    """Train for one epoch"""
+    model.train()
+    total_loss = 0
+    num_batches = 0
+    
+    progress_bar = tqdm(dataloader, desc="Training")
+    
+    for batch_idx, batch in enumerate(progress_bar):
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+        labels = batch['labels'].to(device)
+        
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels
+        )
+        
+        loss = outputs.loss / accumulation_steps
+        loss.backward()
+        
+        if (batch_idx + 1) % accumulation_steps == 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
+            optimizer.zero_grad()
+        
+        total_loss += outputs.loss.item()
+        num_batches += 1
+        
+        progress_bar.set_postfix({'loss': total_loss / num_batches})
+    
+    return total_loss / num_batches
+
+
+def evaluate(model, dataloader, device):
+    """Evaluate the model"""
+    model.eval()
+    total_loss = 0
+    num_batches = 0
+    
+    with torch.no_grad():
+        for batch in tqdm(dataloader, desc="Evaluating"):
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+            
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                labels=labels
+            )
+            
+            total_loss += outputs.loss.item()
+            num_batches += 1
+    
+    return total_loss / num_batches
+
+
+def generate_response(model, tokenizer, device, prompt, max_length=200, temperature=0.7):
+    """Generate a response using the separator format"""
+    # Add the separator to the prompt
+    full_prompt = prompt + SEPARATOR
+    
+    inputs = tokenizer(full_prompt, return_tensors='pt', truncation=True, max_length=512)
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    with torch.no_grad():
+        outputs = model.generate(
+            inputs['input_ids'],
+            attention_mask=inputs['attention_mask'],
+            max_length=max_length,
+            temperature=temperature,
+            top_p=0.9,
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id
+        )
+    
+    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    # Extract response after separator
+    if SEPARATOR.strip() in full_text:
+        response = full_text.split(SEPARATOR.strip())[-1].strip()
+    else:
+        response = full_text[len(prompt):].strip()
+    
+    return response
+
+
+# =============================================================================
+# MAIN TRAINING LOOP
+# =============================================================================
+
+def main():
+    print("=" * 60)
+    print("GPT-2 CORE MODEL TRAINING (IMPROVED VERSION)")
+    print("=" * 60)
+    print(f"Separator token: '{SEPARATOR}'")
+    
+    # Setup paths
+    script_dir = Path(__file__).parent
+    src_dir = script_dir.parent if script_dir.name == 'training' else script_dir
+    
+    # Create output directory
+    output_dir = src_dir / CONFIG['output_dir']
+    output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output directory: {output_dir}")
+    
+    # Device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Device: {device}")
+    
+    # Load model and tokenizer
+    model, tokenizer = setup_model(CONFIG)
+    model = model.to(device)
+    
+    # Load data
+    print("\n" + "-" * 60)
+    print("Loading data...")
+    
+    dialog_path = src_dir / 'dataset' / 'DailyDialog'
+    surgical_path = src_dir / 'dataset' / 'Surgical_Robotics' / 'robot_control_train_v2.json'
+    
+    # Check for v2 data, fall back to v1
+    if not surgical_path.exists():
+        surgical_path = src_dir / 'dataset' / 'Surgical_Robotics' / 'robot_control_train.json'
+        print(f"Note: Using original surgical data (run data_generator_v2.py to create expanded dataset)")
+    
+    dialog_data = load_daily_dialog(str(dialog_path), max_samples=CONFIG['dialog_subsample'])
+    surgical_data = load_surgical_data(str(surgical_path))
+    
+    print(f"\nData balance:")
+    print(f"  Dialog: {len(dialog_data)} examples")
+    print(f"  Surgical: {len(surgical_data)} examples")
+    print(f"  Ratio: {len(dialog_data)/len(surgical_data):.1f}:1")
+    
+    # Create dataset and split
+    all_data = dialog_data + surgical_data
+    import random
+    random.shuffle(all_data)
+    
+    split_idx = int(len(all_data) * 0.9)
+    train_data = all_data[:split_idx]
+    val_data = all_data[split_idx:]
+    
+    # Create datasets
+    train_dataset = CombinedDataset(
+        [d for d in train_data if d in dialog_data],
+        [d for d in train_data if d in surgical_data],
+        tokenizer, 
+        CONFIG['max_length']
+    )
+    
+    # Simpler: just split all_data
+    train_dataset = CombinedDataset([], train_data, tokenizer, CONFIG['max_length'])
+    val_dataset = CombinedDataset([], val_data, tokenizer, CONFIG['max_length'])
+    
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG['batch_size'], shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=CONFIG['batch_size'])
+    
+    print(f"\nDataset sizes:")
+    print(f"  Train: {len(train_dataset)}")
+    print(f"  Val: {len(val_dataset)}")
+    
+    # Optimizer and scheduler
+    optimizer = AdamW(
+        model.parameters(),
+        lr=CONFIG['learning_rate'],
+        weight_decay=CONFIG['weight_decay']
+    )
+    
+    total_steps = len(train_loader) * CONFIG['num_epochs'] // CONFIG['gradient_accumulation_steps']
+    scheduler = get_linear_schedule_with_warmup(
+        optimizer,
+        num_warmup_steps=CONFIG['warmup_steps'],
+        num_training_steps=total_steps
+    )
+    
+    # Training loop
+    print("\n" + "=" * 60)
+    print("TRAINING")
+    print("=" * 60)
+    
+    best_val_loss = float('inf')
+    patience_counter = 0
+    train_losses = []
+    val_losses = []
+    
+    for epoch in range(CONFIG['num_epochs']):
+        print(f"\nEpoch {epoch + 1}/{CONFIG['num_epochs']}")
+        print("-" * 40)
+        
+        train_loss = train_epoch(
+            model, train_loader, optimizer, scheduler, device,
+            CONFIG['gradient_accumulation_steps']
+        )
+        train_losses.append(train_loss)
+        
+        val_loss = evaluate(model, val_loader, device)
+        val_losses.append(val_loss)
+        
+        print(f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+        
+        # Save best model
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            
+            best_model_path = src_dir / CONFIG['best_model_path']
+            model.save_pretrained(str(best_model_path))
+            tokenizer.save_pretrained(str(best_model_path))
+            print(f"✓ New best model saved! (val_loss: {val_loss:.4f})")
+        else:
+            patience_counter += 1
+            print(f"No improvement ({patience_counter}/{CONFIG['early_stopping_patience']})")
+        
+        # Early stopping
+        if patience_counter >= CONFIG['early_stopping_patience']:
+            print(f"\nEarly stopping at epoch {epoch + 1}")
+            break
+        
+        # Test generation
+        print("\nSample generations:")
+        test_prompts = [
+            "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+            "How does a computer learn?",
+            "Hello!",
+        ]
+        
+        for prompt in test_prompts:
+            response = generate_response(model, tokenizer, device, prompt)
+            print(f"  Q: {prompt[:50]}...")
+            print(f"  A: {response[:100]}...")
+    
+    # Plot training curves
+    plt.figure(figsize=(10, 5))
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(val_losses, label='Val Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training Curves (Improved)')
+    plt.legend()
+    plt.savefig(str(src_dir / CONFIG['plot_path']))
+    print(f"\nPlot saved to: {CONFIG['plot_path']}")
+    
+    # Final evaluation
+    print("\n" + "=" * 60)
+    print("FINAL EVALUATION")
+    print("=" * 60)
+    
+    test_prompts = [
+        # Surgical (should work well)
+        "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+        "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
+        "What stages are in this surgery?",
+        
+        # AI literacy (should now work)
+        "How does a computer learn?",
+        "What is a neural network?",
+        
+        # Ethics (should now work)
+        "Will AI take over?",
+        
+        # Conversational (should not give surgical response)
+        "Hello!",
+        "How are you?",
+    ]
+    
+    print("\nTest Responses:")
+    for prompt in test_prompts:
+        response = generate_response(model, tokenizer, device, prompt)
+        print(f"\nQ: {prompt}")
+        print(f"A: {response}")
+    
+    # Save config
+    config_path = output_dir / 'training_config.json'
+    with open(config_path, 'w') as f:
+        json.dump(CONFIG, f, indent=2)
+    
+    print(f"\n✓ Training complete!")
+    print(f"  Best model: {CONFIG['best_model_path']}")
+    print(f"  Best val loss: {best_val_loss:.4f}")
+
+
+if __name__ == "__main__":
+    main()

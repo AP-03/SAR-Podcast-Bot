@@ -1,0 +1,21 @@
+{
+  "base_model": "gpt2",
+  "max_length": 512,
+  "dialog_subsample": 5000,
+  "batch_size": 8,
+  "learning_rate": 0.0002,
+  "num_epochs": 10,
+  "gradient_accumulation_steps": 4,
+  "weight_decay": 0.01,
+  "warmup_steps": 100,
+  "early_stopping_patience": 3,
+  "use_lora": true,
+  "lora_r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.1,
+  "generation_max_length": 200,
+  "generation_temperature": 0.7,
+  "output_dir": "results/core_results_v2",
+  "best_model_path": "results/core_results_v2/gpt2_best_model_v2",
+  "plot_path": "results/core_results_v2/training_curves.png"
+}

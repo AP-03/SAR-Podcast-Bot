@@ -1,0 +1,11 @@
+{
+  "total_examples": 253,
+  "breakdown": {
+    "phase": 105,
+    "tool": 91,
+    "ai_literacy": 25,
+    "ethics": 20,
+    "conversational": 8,
+    "overview": 4
+  }
+}
