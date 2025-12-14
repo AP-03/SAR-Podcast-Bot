@@ -194,13 +194,22 @@ class ActionPredictor:
         print(f"Loading LSTM model on device: {self.device}")
         
         # Load model
-        self.model = self._load_lstm_model(model_path, num_actions)
+        # NOTE: The best checkpoint was trained with hidden_dim=128, dropout=0.7,
+        # and num_layers=2 (see src/hype/LSTM.yaml). Keep these in sync with
+        # the saved weights to avoid size mismatches when loading.
+        self.model = self._load_lstm_model(
+            model_path,
+            num_actions,
+            hidden_dim=128,
+            num_layers=2,
+            dropout=0.7,
+        )
         self.model.eval()
         
         # Action labels
         self.action_labels = PHASES  # Using phase labels as actions
         
-    def _load_lstm_model(self, model_path, num_actions):
+    def _load_lstm_model(self, model_path, num_actions, hidden_dim=128, num_layers=2, dropout=0.7):
         """Load trained LSTM model"""
         print(f"Loading LSTM from: {model_path}")
         
@@ -208,9 +217,9 @@ class ActionPredictor:
         model = ActionLSTMWithAttention(
             num_actions=num_actions,
             feature_dim=2048,
-            hidden_dim=512,
-            num_layers=2,
-            dropout=0.5,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
             bidirectional=True
         )
         
@@ -397,29 +406,37 @@ def main():
     print("\n[STEP 3] Saving results...")
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Ensure ragged lists (tools) are stored safely
+    frame_indices = np.array(cnn_results['frame_indices'])
+    timestamps = np.array(cnn_results['timestamps'])
+    tool_predictions = np.array(cnn_results['tool_predictions'], dtype=object)
+    tool_confidences = np.array(cnn_results['tool_confidences'], dtype=object)
+    phase_predictions = np.array(cnn_results['phase_predictions'])
+    phase_confidences = np.array(cnn_results['phase_confidences'], dtype=object)
     
     if args.skip_lstm:
         np.savez_compressed(
             output_path,
-            frame_indices=cnn_results['frame_indices'],
-            timestamps=cnn_results['timestamps'],
-            tool_predictions=cnn_results['tool_predictions'],
-            tool_confidences=cnn_results['tool_confidences'],
-            phase_predictions=cnn_results['phase_predictions'],
-            phase_confidences=cnn_results['phase_confidences'],
+            frame_indices=frame_indices,
+            timestamps=timestamps,
+            tool_predictions=tool_predictions,
+            tool_confidences=tool_confidences,
+            phase_predictions=phase_predictions,
+            phase_confidences=phase_confidences,
             features=cnn_results['features']
         )
     else:
         np.savez_compressed(
             output_path,
-            frame_indices=cnn_results['frame_indices'],
-            timestamps=cnn_results['timestamps'],
-            tool_predictions=cnn_results['tool_predictions'],
-            tool_confidences=cnn_results['tool_confidences'],
-            phase_predictions=cnn_results['phase_predictions'],
-            phase_confidences=cnn_results['phase_confidences'],
-            lstm_actions=cnn_results['lstm_actions'],
-            lstm_confidences=cnn_results['lstm_confidences'],
+            frame_indices=frame_indices,
+            timestamps=timestamps,
+            tool_predictions=tool_predictions,
+            tool_confidences=tool_confidences,
+            phase_predictions=phase_predictions,
+            phase_confidences=phase_confidences,
+            lstm_actions=np.array(cnn_results['lstm_actions']),
+            lstm_confidences=np.array(cnn_results['lstm_confidences']),
             features=cnn_results['features']
         )
     

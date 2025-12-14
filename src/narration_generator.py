@@ -273,9 +273,16 @@ class VisionResultsLoader:
         # Get most common tools
         top_tools = [tool for tool, count in tool_counts.most_common(3)]
         
-        # Calculate average confidence
+        # Calculate average confidence (max per frame for interpretability)
         segment_conf = self.phase_confidences[start_idx:end_idx+1] if len(self.phase_confidences) > 0 else [0.5]
-        avg_confidence = np.mean(segment_conf)
+        if len(segment_conf) > 0:
+            try:
+                frame_max = [float(np.max(c)) for c in segment_conf]
+                avg_confidence = float(np.mean(frame_max))
+            except Exception:
+                avg_confidence = float(np.mean(segment_conf))
+        else:
+            avg_confidence = 0.0
         
         return {
             'phase': phase,
@@ -353,7 +360,7 @@ def generate_podcast_script(generator, segments, video_name="surgical video"):
         
         if phase_info:
             # Generate GPT-2 response for the phase
-            prompt = f"The vision system detects '{phase_display}'. What robotic algorithm applies here?"
+            prompt = f"The vision system detects '{phase_display}'. What robotic algorithm applies here-"
             gpt_response = generator.generate_response(prompt, max_length=200)
             
             script_parts.append(f"[AI Analysis]")
@@ -390,9 +397,9 @@ def generate_podcast_script(generator, segments, video_name="surgical video"):
     
     # Ask the bot AI literacy questions
     ai_questions = [
-        "How does a computer learn to recognize surgical phases?",
-        "Can AI in surgery make mistakes? How do we prevent errors?",
-        "Will AI replace surgeons in the future?"
+        "How does a computer learn to recognize surgical phases-",
+        "Can AI in surgery make mistakes- How do we prevent errors-",
+        "Will AI replace surgeons in the future-"
     ]
     
     for q in ai_questions:

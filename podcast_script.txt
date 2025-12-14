@@ -2,9 +2,9 @@
 SAR-PODCAST-BOT: AI-POWERED SURGICAL NARRATION
 ======================================================================
 
-Video: test_workflow_video_01_evaluation
-Total Duration: 00:00
-Phases Detected: 0
+Video: video79_predictions
+Total Duration: 56:54
+Phases Detected: 29
 
 ----------------------------------------------------------------------
 INTRODUCTION
@@ -19,18 +19,534 @@ approach each phase using advanced control algorithms.
 PHASE-BY-PHASE ANALYSIS
 ----------------------------------------------------------------------
 
+[00:00 - 00:39]
+PHASE 1: PREPARATION
+Duration: 39.0s | Confidence: 65.0%
+
+[AI Analysis]
+Our vision system has detected the Preparation phase.
+Key Concept: Visual SLAM
+
+[GPT-2 Explanation]
+in how? For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[00:40 - 21:43]
+PHASE 2: CALOT TRIANGLE DISSECTION
+Duration: 1263.0s | Confidence: 93.0%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+in how? For Calot Dissection, the critical concept is **Tremor Filtration**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[21:44 - 22:07]
+PHASE 3: GALLBLADDER DISSECTION
+Duration: 23.0s | Confidence: 100.0%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+inwards? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[22:08 - 24:07]
+PHASE 4: CALOT TRIANGLE DISSECTION
+Duration: 119.0s | Confidence: 95.7%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+inwards? For Clipping/Cutting, the critical concept is **Tremor Filtration**. Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[24:08 - 24:47]
+PHASE 5: GALLBLADDER DISSECTION
+Duration: 39.0s | Confidence: 100.0%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+inwards? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+
+----------------------------------------
+
+[24:48 - 26:55]
+PHASE 6: CALOT TRIANGLE DISSECTION
+Duration: 127.0s | Confidence: 82.6%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+inwards? For Calot Dissection, the critical concept is **Tremor Filtration**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Bipolar Forceps: Multitasking Efficiency
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+
+----------------------------------------
+
+[26:56 - 29:03]
+PHASE 7: CLIPPING AND CUTTING
+Duration: 127.0s | Confidence: 88.4%
+
+[AI Analysis]
+Our vision system has detected the Clipping and Cutting phase.
+Key Concept: Tremor Filtration
+
+[GPT-2 Explanation]
+inwards? For Clipping/Cutting, the critical concept is **Tremor Filtration**. Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly.
+
+[Tools Detected]
+  • Clip Applier: Articulated Clip Applier
+  • Grasper: Haptic Feedback Simulation
+  • Scissors: Tremor Filtration (6Hz Low-Pass)
+
+----------------------------------------
+
+[29:04 - 35:35]
+PHASE 8: GALLBLADDER DISSECTION
+Duration: 391.0s | Confidence: 96.1%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+in the future? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[35:36 - 35:43]
+PHASE 9: CALOT TRIANGLE DISSECTION
+Duration: 7.0s | Confidence: 89.1%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+inwards? For Clipping/Cutting, the critical concept is **Tremor Filtration**. Clipping the artery requires steadiness. The robot uses a 6Hz Low-Pass Filter to remove the surgeon's natural hand tremors, ensuring the clip is placed perfectly.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[35:44 - 37:35]
+PHASE 10: GALLBLADDER DISSECTION
+Duration: 111.0s | Confidence: 96.6%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+inwards? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[37:36 - 37:59]
+PHASE 11: CALOT TRIANGLE DISSECTION
+Duration: 23.0s | Confidence: 97.0%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+inwards? For Calot Dissection, the critical concept is **Tremor Filtration**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
+
+[Tools Detected]
+  • Bipolar Forceps: Multitasking Efficiency
+  • Grasper: Haptic Feedback Simulation
+  • Specimen Retrieval Bag: Assistant Port Coordination
+
+----------------------------------------
+
+[38:00 - 38:07]
+PHASE 12: CLEANING AND COAGULATION
+Duration: 7.0s | Confidence: 98.9%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+in how? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Bipolar Forceps: Multitasking Efficiency
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[38:08 - 39:03]
+PHASE 13: GALLBLADDER DISSECTION
+Duration: 55.0s | Confidence: 91.0%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+in the future? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Bipolar Forceps: Multitasking Efficiency
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[39:04 - 39:11]
+PHASE 14: GALLBLADDER PACKAGING
+Duration: 7.0s | Confidence: 79.3%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Packaging phase.
+Key Concept: Master-Slave Teleoperation
+
+[GPT-2 Explanation]
+inwards? For Gallbladder Packaging, the critical concept is **Master-Slave Teleoperation**. Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+
+----------------------------------------
+
+[39:12 - 47:27]
+PHASE 15: GALLBLADDER DISSECTION
+Duration: 495.0s | Confidence: 96.4%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+in the future? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Electrocautery Hook: EndoWrist (7 DOFs)
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[47:28 - 49:35]
+PHASE 16: CLEANING AND COAGULATION
+Duration: 127.0s | Confidence: 87.2%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+in? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Bipolar Forceps: Multitasking Efficiency
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[49:36 - 50:15]
+PHASE 17: GALLBLADDER DISSECTION
+Duration: 39.0s | Confidence: 94.8%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+in the future? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Bipolar Forceps: Multitasking Efficiency
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[50:16 - 50:55]
+PHASE 18: CLEANING AND COAGULATION
+Duration: 39.0s | Confidence: 87.1%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+in how? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Bipolar Forceps: Multitasking Efficiency
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[50:56 - 51:27]
+PHASE 19: GALLBLADDER DISSECTION
+Duration: 31.0s | Confidence: 86.9%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Dissection phase.
+Key Concept: Inverse Kinematics
+
+[GPT-2 Explanation]
+in the future? For Gallbladder Dissection, the critical concept is **Inverse Kinematics**. The robot uses Inverse Kinematics to calculate the exact joint angles needed to maneuver the tool behind the gallbladder without the robot arms colliding.
+
+[Tools Detected]
+  • Bipolar Forceps: Multitasking Efficiency
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[51:28 - 51:51]
+PHASE 20: CLEANING AND COAGULATION
+Duration: 23.0s | Confidence: 92.0%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+inwards? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Bipolar Forceps: Multitasking Efficiency
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[51:52 - 52:07]
+PHASE 21: CALOT TRIANGLE DISSECTION
+Duration: 15.0s | Confidence: 80.6%
+
+[AI Analysis]
+Our vision system has detected the Calot Triangle Dissection phase.
+Key Concept: Motion Scaling
+
+[GPT-2 Explanation]
+inwards? For Calot Dissection, the critical concept is **Tremor Filtration**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
+
+[Tools Detected]
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+  • Specimen Retrieval Bag: Assistant Port Coordination
+
+----------------------------------------
+
+[52:08 - 52:15]
+PHASE 22: CLEANING AND COAGULATION
+Duration: 7.0s | Confidence: 59.6%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+in? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[52:16 - 52:31]
+PHASE 23: GALLBLADDER PACKAGING
+Duration: 15.0s | Confidence: 64.5%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Packaging phase.
+Key Concept: Master-Slave Teleoperation
+
+[GPT-2 Explanation]
+inwards? For Gallbladder Packaging, the critical concept is **Master-Slave Teleoperation**. Bagging the specimen relies on Master-Slave Teleoperation algorithms. The system compensates for processing latency to ensure the robot moves instantly with the surgeon's hands.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Bipolar Forceps: Multitasking Efficiency
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[52:32 - 52:39]
+PHASE 24: CLEANING AND COAGULATION
+Duration: 7.0s | Confidence: 78.5%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+in? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
+[52:40 - 53:35]
+PHASE 25: GALLBLADDER PACKAGING
+Duration: 55.0s | Confidence: 83.3%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Packaging phase.
+Key Concept: Master-Slave Teleoperation
+
+[GPT-2 Explanation]
+in 'Gallbladder Packaging'. The key algorithm is **Master-Slave Teleoperation**.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+  • Clip Applier: Articulated Clip Applier
+
+----------------------------------------
+
+[53:36 - 53:43]
+PHASE 26: GALLBLADDER RETRACTION
+Duration: 7.0s | Confidence: 75.4%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Retraction phase.
+Key Concept: Active Constraints (Virtual Fixtures)
+
+[GPT-2 Explanation]
+for Gallbladder Retraction? For Gallbladder Retraction, the critical concept is **Active Constraints (Virtual Fixtures)**. To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[53:44 - 55:59]
+PHASE 27: CLEANING AND COAGULATION
+Duration: 135.0s | Confidence: 72.0%
+
+[AI Analysis]
+Our vision system has detected the Cleaning and Coagulation phase.
+Key Concept: Augmented Reality (Fluorescence)
+
+[GPT-2 Explanation]
+for Cleaning Coagulation? For Cleaning Coagulation, the critical concept is **Augmented Reality (Fluorescence)**. To find bleeding spots, robotic systems overlay Augmented Reality feeds (like Firefly fluorescence) to highlight blood flow in green on the surgeon's screen.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[56:00 - 56:47]
+PHASE 28: GALLBLADDER RETRACTION
+Duration: 47.0s | Confidence: 67.0%
+
+[AI Analysis]
+Our vision system has detected the Gallbladder Retraction phase.
+Key Concept: Active Constraints (Virtual Fixtures)
+
+[GPT-2 Explanation]
+for Gallbladder Retraction? For Gallbladder Retraction, the critical concept is **Active Constraints (Virtual Fixtures)**. To hold the organ safely, the robot uses Active Constraints. These are software 'invisible walls' that prevent the tool from slipping into the liver while maintaining tension.
+
+[Tools Detected]
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+
+----------------------------------------
+
+[56:48 - 56:54]
+PHASE 29: PREPARATION
+Duration: 6.0s | Confidence: 75.7%
+
+[AI Analysis]
+Our vision system has detected the Preparation phase.
+Key Concept: Visual SLAM
+
+[GPT-2 Explanation]
+inwards? For Preparation, the critical concept is **Visual SLAM**. During preparation, a robot uses Visual SLAM (Simultaneous Localization and Mapping). It tracks feature points on the cavity walls to build a 3D depth map of the environment.
+
+[Tools Detected]
+  • Specimen Retrieval Bag: Assistant Port Coordination
+  • Grasper: Haptic Feedback Simulation
+  • Irrigator/Aspirator: Console Foot-Pedal Control
+
+----------------------------------------
+
 ----------------------------------------------------------------------
 AI LITERACY DISCUSSION
 ----------------------------------------------------------------------
 
-Q: How does a computer learn to recognize surgical phases?
-A: Safety is enhanced because **EndoWrist (7 DOFs)** allows for greater precision. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind.
+Q: How does a computer learn to recognize surgical phases-
+A: in or out? For Dissection, the critical concept is **Motion Scaling**. Dissection requires precision. A robot uses Motion Scaling (e.g., 5:1 ratio), converting a 5cm hand movement into a 1cm tool movement to prevent accidental cuts.
 
-Q: Can AI in surgery make mistakes? How do we prevent errors?
-A: Safety is enhanced because **EndoWrist (7 DOFs)** allows for greater precision. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind.
+Q: Can AI in surgery make mistakes- How do we prevent errors-
+A: In an AI, a robot would rely on **EndoWrist (7 DOFs)**. The manual Hook is rigid. A robotic hook uses EndoWrist technology with 7 Degrees of Freedom, allowing it to rotate 360 degrees to hook tissue from behind.
 
-Q: Will AI replace surgeons in the future?
-A: It is challenging but possible. To automate the Clipper, an AI would need to perfectly master **Articulated Clip Applier** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action.
+Q: Will AI replace surgeons in the future-
+A: with a robotic system? It is challenging but possible. To automate the Hook, an AI would need to perfectly master **EndoWrist (7 DOFs)** to match human dexterity. Currently, AI is mostly used to assist, not replace, this action.
 
 ----------------------------------------------------------------------
 CONCLUSION
@@ -41,6 +557,13 @@ video in real-time, identifying phases and tools while explaining
 the robotic control concepts that enable safer, more precise surgery.
 
 Key technologies covered:
+  • Master-Slave Teleoperation
+  • Active Constraints (Virtual Fixtures)
+  • Augmented Reality (Fluorescence)
+  • Tremor Filtration
+  • Inverse Kinematics
+  • Visual SLAM
+  • Motion Scaling
 
 ======================================================================
 END OF NARRATION
