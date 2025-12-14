@@ -150,7 +150,7 @@ def load_model(model_path, device='cuda'):
         model = PeftModel.from_pretrained(
             base_model, 
             model_path,
-            local_files_only=True,  # THIS IS THE KEY FIX!
+            local_files_only=False,
             is_trainable=False
         )
         print("✓ LoRA adapter loaded!")
