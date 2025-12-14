@@ -304,14 +304,14 @@ from torch.optim import SGD
 from tqdm import tqdm
 
 # Basic SGD optimizer - no weight decay, no fancy optimizers
-optimizer = SGD(model.parameters(), lr=config.get('learning_rate', 0.01))
+optimizer = SGD(model.parameters(), lr=config.get('learning_rate', 0.0001))
 
 # Move model to device
 model.to(device)
 model.train()
 
 print(f"\nTraining Configuration:")
-print(f"  Learning rate: {config.get('learning_rate', 0.01)}")
+print(f"  Learning rate: {config.get('learning_rate', 0.0001)}")
 print(f"  Epochs: {config['num_epochs']}")
 print(f"  Batch size: {config['batch_size']}")
 print(f"  Device: {device}")
