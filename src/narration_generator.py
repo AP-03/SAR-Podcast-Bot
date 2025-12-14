@@ -143,50 +143,97 @@ TOOL_KNOWLEDGE = {
 class NarrationGenerator:
     """Generate podcast-style narration from vision pipeline output"""
     
-    def __init__(self, model_path, device='cuda'):
+    def __init__(self, model_path=None, device='cuda', model_type='core'):
         """
-        Initialize the narration generator with GPT-2 model
+        Initialize the narration generator with selected language model
         
         Args:
-            model_path: Path to trained GPT-2 model checkpoint
+            model_path: Path to trained model checkpoint (for 'core' or 'dummy')
             device: 'cuda' or 'cpu'
+            model_type: Type of model to use - 'dummy', 'core', or 'sota'
         """
         self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        self.model_type = model_type
         print(f"Using device: {self.device}")
+        print(f"Model type: {model_type}")
         
-        # Load model and tokenizer
-        print(f"Loading GPT-2 model from: {model_path}")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
-        self.model.eval()
-        print("Model loaded successfully!")
+        # Load model based on type
+        if model_type == 'dummy':
+            # Load Dummy LSTM model
+            print(f"Loading Dummy LSTM model from: {model_path}")
+            from models.dummy_LSTM import DummyLSTM
+            
+            # Use GPT-2 tokenizer for compatibility
+            self.tokenizer = AutoTokenizer.from_pretrained('gpt2')
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+            # Load dummy model
+            self.model = DummyLSTM.from_pretrained(model_path).to(self.device)
+            self.model.eval()
+            print("Dummy LSTM model loaded successfully!")
+            
+        elif model_type == 'core':
+            # Load Core GPT-2 model (existing implementation)
+            print(f"Loading Core GPT-2 model from: {model_path}")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+            self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
+            self.model.eval()
+            print("Core GPT-2 model loaded successfully!")
+            
+        elif model_type == 'sota':
+            # Use SOTA GPT-4o via OpenAI API
+            print("Using SOTA GPT-4o model via OpenAI API")
+            from models.SOTA import query_gpt
+            self.query_gpt = query_gpt
+            self.tokenizer = None
+            self.model = None
+            print("SOTA model initialized successfully!")
+            
+        else:
+            raise ValueError(f"Unknown model type: {model_type}. Choose 'dummy', 'core', or 'sota'.")
         
     def generate_response(self, prompt, max_length=200, temperature=0.7):
-        """Generate a response using the GPT-2 model"""
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
-        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        """Generate a response using the selected model"""
         
-        with torch.no_grad():
-            outputs = self.model.generate(
-                inputs['input_ids'],
-                attention_mask=inputs['attention_mask'],
-                max_length=max_length,
+        if self.model_type == 'sota':
+            # Use SOTA API
+            response = self.query_gpt(
+                prompt,
                 temperature=temperature,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                num_return_sequences=1
+                max_tokens=max_length
             )
+            return response
         
-        full_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract only the generated part (after prompt)
-        if full_text.startswith(prompt):
-            response = full_text[len(prompt):].strip()
         else:
-            response = full_text.strip()
+            # Use local model (dummy or core)
+            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
             
-        return response
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    inputs['input_ids'],
+                    attention_mask=inputs.get('attention_mask'),
+                    max_length=max_length,
+                    temperature=temperature,
+                    top_p=0.9,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    num_return_sequences=1
+                )
+            
+            full_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            
+            # Extract only the generated part (after prompt)
+            if full_text.startswith(prompt):
+                response = full_text[len(prompt):].strip()
+            else:
+                response = full_text.strip()
+                
+            return response
 
 
 class VisionResultsLoader:
@@ -511,8 +558,12 @@ def main():
         print("\nGenerating narration (knowledge base only)...")
         script = generate_simple_narration(segments)
     else:
-        print("\nInitializing GPT-2 model...")
-        generator = NarrationGenerator(args.model, device=args.device)
+        print(f"\nInitializing {args.model_type} model...")
+        generator = NarrationGenerator(
+            model_path=args.model,
+            device=args.device,
+            model_type=args.model_type
+        )
         
         print("\nGenerating podcast script...")
         video_name = Path(args.npz).stem

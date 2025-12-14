@@ -65,17 +65,173 @@ The default checkpoints under `src/results/` were produced with the following st
    - Uses `src/hype/Core.yaml` for hyperparameters and paths.
    - Best checkpoint lands in `src/results/core_results/gpt2_best_model_intial/`.
 
-## Running the Video Pipeline
-With the shipped checkpoints:
+## Running the Main Pipeline
+
+The `src/main.py` script provides an end-to-end pipeline with vision processing (CNN + LSTM) and interactive Q&A capabilities.
+
+### Basic Video Processing
+
+Process a surgical video and save predictions:
 ```bash
 python src/main.py --video /path/to/video.mp4 \
-  --cnn-model src/results/tool_results/tool_detection_model_best.pth \
-  --lstm-model src/results/phase_results/best_lstm_attention_model.pth \
-  --output src/results/final_predictions.npz \
-  --sample-rate 1 --window-size 16 --stride 8 --device cuda
+  --sample-rate 25 \
+  --device cuda
 ```
-- Add `--skip-lstm` to export only CNN predictions.
-- Output `.npz` includes per-frame tools, phases, confidences, extracted features, and (when enabled) LSTM-smoothed actions and attention weights.
+
+**Key Arguments:**
+- `--video` - Path to input video file
+- `--sample-rate` - Process every Nth frame (e.g., 25 = 1 FPS for 25 FPS video)
+- `--device` - `cuda` or `cpu`
+- `--cnn-model` - Path to CNN checkpoint (default: `results/tool_results/tool_detection_model_best.pth`)
+- `--lstm-model` - Path to LSTM checkpoint (default: `results/phase_results/best_lstm_attention_model.pth`)
+- `--output` - Output NPZ path (default: `results/final_results/predictions.npz`)
+- `--skip-lstm` - Skip LSTM processing (CNN only)
+
+**Output:** Saves `.npz` file with frame indices, timestamps, tool predictions, phase predictions, LSTM actions, confidences, and CNN features.
+
+### Interactive Q&A Mode
+
+Have a conversation with the bot about the processed video:
+
+```bash
+python src/main.py --video /path/to/video.mp4 \
+  --sample-rate 25 \
+  --interactive-qa \
+  --model-type sota \
+  --device cuda
+```
+
+**Language Model Options (`--model-type`):**
+- `dummy` - Simple LSTM baseline
+- `core` - Fine-tuned GPT-2 with LoRA (default)
+- `sota` - GPT-4o via OpenAI API (requires `OPENAI_API_KEY`)
+
+**Interactive Commands:**
+- `/summary` - Show video summary
+- `/phases` - List all detected phases
+- `/tools` - List all detected tools
+- `/phase <name>` - Show tools used in a specific phase
+- `/system` - Show system architecture and capabilities
+- `/tts` - Toggle text-to-speech on/off
+- `/voice` - Toggle voice input on/off
+- `/save` - Save conversation to JSON
+- `/quit` - Exit Q&A session
+
+### Text-to-Speech (TTS)
+
+Enable spoken responses (macOS only):
+
+```bash
+python src/main.py --video /path/to/video.mp4 \
+  --interactive-qa \
+  --enable-tts \
+  --model-type sota
+```
+
+The bot will speak its responses aloud using macOS `say` command. Toggle on/off during session with `/tts`.
+
+### Voice Input (Speech-to-Text)
+
+Speak your questions instead of typing:
+
+```bash
+python src/main.py --video /path/to/video.mp4 \
+  --interactive-qa \
+  --enable-voice-input \
+  --model-type sota
+```
+
+**Requirements:**
+```bash
+pip install openai-whisper sounddevice scipy
+```
+
+**How it works:**
+- Speak your question (up to 10 seconds)
+- Whisper transcribes your speech
+- Bot responds with answer
+- Toggle on/off during session with `/voice`
+
+**Full Podcast Experience:**
+```bash
+python src/main.py --video /path/to/video.mp4 \
+  --interactive-qa \
+  --enable-tts \
+  --enable-voice-input \
+  --model-type sota
+```
+
+### Fast Q&A with Pre-computed Results
+
+Skip video processing and load existing NPZ file for instant Q&A:
+
+```bash
+python src/main.py --load-npz results/final_results/predictions.npz \
+  --interactive-qa \
+  --enable-tts \
+  --model-type sota
+```
+
+**Benefits:**
+- ⚡ Instant startup (~5 seconds vs 6+ minutes)
+- 💾 Reuse previously processed videos
+- 🔄 Multiple Q&A sessions on same video
+- 🎯 Test different language models quickly
+
+**Example Workflow:**
+```bash
+# First time: Process video (slow, ~6 minutes)
+python src/main.py --video test.mp4 --sample-rate 25
+
+# Later: Instant Q&A sessions (fast, <5 seconds)
+python src/main.py --load-npz results/final_results/predictions.npz \
+  --interactive-qa --enable-tts --model-type sota
+```
+
+### Complete CLI Reference
+
+```bash
+python src/main.py [OPTIONS]
+
+Video Processing:
+  --video PATH              Input video file
+  --load-npz PATH          Load pre-computed NPZ instead of processing
+  --cnn-model PATH         CNN checkpoint path
+  --lstm-model PATH        LSTM checkpoint path
+  --output PATH            Output NPZ path
+  --sample-rate N          Process every Nth frame
+  --window-size N          LSTM window size (default: 16)
+  --stride N               LSTM stride (default: 8)
+  --device {cuda,cpu}      Device for inference
+  --skip-lstm              Skip LSTM processing
+
+Interactive Q&A:
+  --interactive-qa         Enable interactive Q&A mode
+  --model-type {dummy,core,sota}  Language model to use
+  --lm-model-path PATH     Path to language model checkpoint
+  --enable-tts             Enable text-to-speech (macOS)
+  --enable-voice-input     Enable voice input (requires Whisper)
+```
+
+## Performance Metrics
+
+Real performance on M2CAI16 test dataset (5 videos):
+
+**CNN Phase Recognition:**
+- Overall accuracy: 34.8%
+- High variance across videos (4.6% to 77.1%)
+
+**LSTM Phase Recognition:**
+- Overall accuracy: 63.7%
+- Improvement over CNN: +28.9%
+- Best video: 91.5% accuracy
+
+**Inference Speed (CPU):**
+- CNN: ~10.5 FPS
+- LSTM: 481-946 windows/second
+- Total pipeline: 4-7 minutes for 40-min video at 1 FPS sampling
+
+See `src/KnowledgeBases/models_info.json` for detailed metrics.
 
 ## Core Model Evaluation Snapshot
 Latest `src/results/core_results/evaluation_results.json`:
@@ -89,3 +245,5 @@ Latest `src/results/core_results/evaluation_results.json`:
 - Training scripts assume Cholec80-style CSVs; adjust keys if your manifest differs.
 - Default transforms are in `src/dataset/transform.py` (224×224, ImageNet normalization).
 - GPU strongly recommended for both CNN/LSTM training and GPT-2 fine-tuning.
+- For SOTA model, set `OPENAI_API_KEY` environment variable.
+- Voice input uses Whisper "tiny" model (~39MB, good balance of speed and accuracy).

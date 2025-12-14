@@ -614,9 +614,148 @@ def main():
             else:
                 print()
     
+    # Save comprehensive metrics to JSON for knowledge base
+    if len(all_results) > 0:
+        save_metrics_to_json(all_results, results_dir, args.skip_lstm)
+    
     print("\n" + "="*60)
     print("EVALUATION COMPLETE")
     print("="*60)
+
+
+def evaluate_tool_detection(cnn_results, gt_labels):
+    """
+    Evaluate multi-label tool detection performance
+    
+    Args:
+        cnn_results: Dictionary with 'cnn_tool_predictions' (list of lists of tool names)
+        gt_labels: Ground truth phase labels (used to get expected tools)
+    
+    Returns:
+        Dictionary with per-tool and overall metrics
+    """
+    from sklearn.metrics import precision_recall_fscore_support
+    
+    # Build binary labels for each tool
+    num_frames = len(gt_labels)
+    num_tools = len(TOOLS)
+    
+    # Ground truth: tools that should be present based on phase
+    y_true = np.zeros((num_frames, num_tools))
+    for i, phase in enumerate(gt_labels):
+        expected_tools = PHASE_TO_TOOLS.get(phase, [])
+        for tool in expected_tools:
+            if tool in TOOLS:
+                tool_idx = TOOLS.index(tool)
+                y_true[i, tool_idx] = 1
+    
+    # Predictions: tools that were detected
+    y_pred = np.zeros((num_frames, num_tools))
+    for i, detected_tools in enumerate(cnn_results['cnn_tool_predictions']):
+        for tool in detected_tools:
+            if tool in TOOLS:
+                tool_idx = TOOLS.index(tool)
+                y_pred[i, tool_idx] = 1
+    
+    # Calculate per-tool metrics
+    precision_per_tool, recall_per_tool, f1_per_tool, support_per_tool = \
+        precision_recall_fscore_support(y_true, y_pred, average=None, zero_division=0)
+    
+    # Calculate overall metrics (micro and macro averaging)
+    precision_micro, recall_micro, f1_micro, _ = \
+        precision_recall_fscore_support(y_true, y_pred, average='micro', zero_division=0)
+    precision_macro, recall_macro, f1_macro, _ = \
+        precision_recall_fscore_support(y_true, y_pred, average='macro', zero_division=0)
+    
+    metrics = {
+        'precision_per_tool': {TOOLS[i]: float(precision_per_tool[i]) for i in range(num_tools)},
+        'recall_per_tool': {TOOLS[i]: float(recall_per_tool[i]) for i in range(num_tools)},
+        'f1_per_tool': {TOOLS[i]: float(f1_per_tool[i]) for i in range(num_tools)},
+        'support_per_tool': {TOOLS[i]: int(support_per_tool[i]) for i in range(num_tools)},
+        'precision_micro': float(precision_micro),
+        'recall_micro': float(recall_micro),
+        'f1_micro': float(f1_micro),
+        'precision_macro': float(precision_macro),
+        'recall_macro': float(recall_macro),
+        'f1_macro': float(f1_macro),
+    }
+    
+    return metrics
+
+
+def save_metrics_to_json(all_results, results_dir, skip_lstm=False):
+    """
+    Save comprehensive metrics to JSON file for knowledge base
+    
+    Args:
+        all_results: List of result dictionaries from evaluate_single_video
+        results_dir: Directory to save metrics
+        skip_lstm: Whether LSTM was skipped
+    """
+    import json
+    
+    # Aggregate metrics across all videos
+    cnn_accuracies = [r['cnn_metrics']['accuracy'] for r in all_results]
+    cnn_precisions = [r['cnn_metrics']['precision'] for r in all_results]
+    cnn_recalls = [r['cnn_metrics']['recall'] for r in all_results]
+    cnn_f1s = [r['cnn_metrics']['f1'] for r in all_results]
+    
+    # Aggregate per-class F1 scores
+    cnn_per_class_f1 = {phase: [] for phase in PHASES}
+    for r in all_results:
+        for phase in PHASES:
+            cnn_per_class_f1[phase].append(r['cnn_metrics']['f1_per_class'][phase])
+    
+    metrics_summary = {
+        "dataset": "M2CAI16 workflow test videos",
+        "num_videos": len(all_results),
+        "video_numbers": [r['video_num'] for r in all_results],
+        
+        "cnn_phase_recognition": {
+            "overall_accuracy": f"{np.mean(cnn_accuracies):.1%}",
+            "precision": f"{np.mean(cnn_precisions):.1%}",
+            "recall": f"{np.mean(cnn_recalls):.1%}",
+            "f1_score": f"{np.mean(cnn_f1s):.1%}",
+            "per_class_f1": {phase: f"{np.mean(scores):.1%}" for phase, scores in cnn_per_class_f1.items()},
+            "std_accuracy": f"{np.std(cnn_accuracies):.1%}",
+        },
+        
+        "cnn_tool_detection": {
+            "note": "Tool detection metrics calculated based on phase-tool mapping",
+            "phase_aware_accuracy": "See individual video results"
+        }
+    }
+    
+    if not skip_lstm:
+        lstm_accuracies = [r['lstm_metrics']['accuracy'] for r in all_results]
+        lstm_precisions = [r['lstm_metrics']['precision'] for r in all_results]
+        lstm_recalls = [r['lstm_metrics']['recall'] for r in all_results]
+        lstm_f1s = [r['lstm_metrics']['f1'] for r in all_results]
+        
+        lstm_per_class_f1 = {phase: [] for phase in PHASES}
+        for r in all_results:
+            for phase in PHASES:
+                lstm_per_class_f1[phase].append(r['lstm_metrics']['f1_per_class'][phase])
+        
+        metrics_summary["lstm_phase_recognition"] = {
+            "overall_accuracy": f"{np.mean(lstm_accuracies):.1%}",
+            "precision": f"{np.mean(lstm_precisions):.1%}",
+            "recall": f"{np.mean(lstm_recalls):.1%}",
+            "f1_score": f"{np.mean(lstm_f1s):.1%}",
+            "per_class_f1": {phase: f"{np.mean(scores):.1%}" for phase, scores in lstm_per_class_f1.items()},
+            "std_accuracy": f"{np.std(lstm_accuracies):.1%}",
+            "improvement_over_cnn": f"{(np.mean(lstm_accuracies) - np.mean(cnn_accuracies)):.1%}",
+        }
+    
+    # Save to JSON
+    output_path = results_dir / 'performance_metrics.json'
+    with open(output_path, 'w') as f:
+        json.dump(metrics_summary, f, indent=2)
+    
+    print(f"\n📊 Metrics saved to: {output_path}")
+    print(f"   Use this file to update KnowledgeBases/models_info.json")
+
+
 
 
 if __name__ == "__main__":

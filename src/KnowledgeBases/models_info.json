@@ -1,0 +1,364 @@
+{
+    "system_name": "SAR-Podcast-Bot",
+    "description": "Surgical Activity Recognition Podcast Bot - An AI system that analyzes surgical videos and provides interactive Q&A about detected phases, tools, and robotic surgical concepts",
+    "version": "2.0",
+    "vision_pipeline": {
+        "description": "Two-stage vision pipeline for surgical video analysis",
+        "architecture": "CNN + LSTM",
+        "stage_1_cnn": {
+            "model_name": "ToolCNN (ResNet-50 based)",
+            "purpose": "Frame-level feature extraction and dual-task prediction",
+            "backbone": {
+                "architecture": "ResNet-50",
+                "pretrained": "ImageNet (IMAGENET1K_V2)",
+                "feature_dimension": 2048,
+                "description": "Pre-trained on ImageNet for transfer learning"
+            },
+            "tasks": {
+                "tool_detection": {
+                    "type": "Multi-label classification",
+                    "num_classes": 7,
+                    "classes": [
+                        "Grasper",
+                        "Bipolar",
+                        "Hook",
+                        "Scissors",
+                        "Clipper",
+                        "Irrigator",
+                        "SpecimenBag"
+                    ],
+                    "loss_function": "BCEWithLogitsLoss",
+                    "activation": "Sigmoid",
+                    "threshold": 0.5,
+                    "description": "Detects multiple surgical tools present in each frame"
+                },
+                "phase_detection": {
+                    "type": "Single-label classification",
+                    "num_classes": 7,
+                    "classes": [
+                        "Preparation",
+                        "CalotTriangleDissection",
+                        "ClippingCutting",
+                        "GallbladderDissection",
+                        "GallbladderRetraction",
+                        "CleaningCoagulation",
+                        "GallbladderPackaging"
+                    ],
+                    "loss_function": "CrossEntropyLoss",
+                    "activation": "Softmax",
+                    "description": "Classifies the surgical phase for each frame"
+                }
+            },
+            "parameters": {
+                "dropout": 0.5,
+                "weight_initialization": "Uniform (0.0, 0.01)",
+                "bias_initialization": "Constant (0.0)"
+            },
+            "training": {
+                "dataset": "Cholec80",
+                "optimizer": "Adam",
+                "learning_rate": 0.0001,
+                "batch_size": 16,
+                "epochs": 50,
+                "early_stopping": "Patience of 10 epochs",
+                "data_augmentation": [
+                    "Random horizontal flip",
+                    "Random rotation",
+                    "Color jitter"
+                ],
+                "loss_weights": {
+                    "tool_loss": 1.0,
+                    "phase_loss": 1.0
+                },
+                "techniques": [
+                    "Transfer Learning",
+                    "Dropout Regularization",
+                    "Dual-task Learning"
+                ]
+            }
+        },
+        "stage_2_lstm": {
+            "model_name": "ActionLSTMWithAttention",
+            "purpose": "Temporal modeling of surgical phases using CNN features",
+            "architecture": {
+                "type": "Bidirectional LSTM with Attention Mechanism",
+                "input_dimension": 2048,
+                "hidden_dimension": 128,
+                "num_layers": 2,
+                "bidirectional": true,
+                "dropout": 0.5
+            },
+            "attention_mechanism": {
+                "type": "Additive Attention",
+                "description": "Learns to focus on important time steps in the sequence",
+                "architecture": "Linear(256) -> Tanh -> Linear(1) -> Softmax",
+                "output": "Weighted context vector from LSTM outputs"
+            },
+            "classifier": {
+                "architecture": "Dropout -> Linear(256, 128) -> ReLU -> Dropout -> Linear(128, 7)",
+                "output_classes": 7,
+                "activation": "Softmax"
+            },
+            "temporal_processing": {
+                "window_size": 16,
+                "stride": 8,
+                "aggregation": "Confidence-weighted voting",
+                "description": "Processes sequences of 16 frames with 8-frame stride, aggregates predictions via voting"
+            },
+            "advantages": {
+                "temporal_context": "Captures temporal dependencies between frames",
+                "bidirectional": "Considers both past and future context",
+                "attention": "Focuses on important frames in the sequence",
+                "smoothing": "Reduces frame-level noise through temporal aggregation"
+            },
+            "training": {
+                "dataset": "Cholec80 features (from trained CNN)",
+                "optimizer": "Adam",
+                "learning_rate": 0.001,
+                "batch_size": 32,
+                "epochs": 100,
+                "sequence_length": 16,
+                "early_stopping": "Patience of 15 epochs",
+                "techniques": [
+                    "Bidirectional processing",
+                    "Attention mechanism",
+                    "Dropout regularization"
+                ]
+            }
+        },
+        "inference_pipeline": {
+            "steps": [
+                "1. Extract frames from video at specified sample rate (default: 1 FPS)",
+                "2. Pass each frame through CNN to get tool predictions, phase predictions, and 2048-dim features",
+                "3. Collect features into sequences of 16 frames with 8-frame stride",
+                "4. Pass feature sequences through LSTM with attention for refined phase predictions",
+                "5. Aggregate LSTM predictions using confidence-weighted voting",
+                "6. Create phase segments by grouping consecutive frames with same phase",
+                "7. Map detected tools to each phase segment"
+            ],
+            "output_format": "NPZ file containing frame indices, timestamps, tool predictions, tool confidences, phase predictions, phase confidences, LSTM actions, LSTM confidences, and features"
+        }
+    },
+    "language_models": {
+        "description": "Three language models for interactive Q&A and narration generation",
+        "dummy_lstm": {
+            "name": "Dummy LSTM",
+            "type": "Baseline model",
+            "purpose": "Simple baseline for comparison",
+            "architecture": "LSTM-based language model",
+            "use_case": "Testing and baseline comparisons"
+        },
+        "core_gpt2": {
+            "name": "Fine-tuned GPT-2",
+            "type": "Core model",
+            "base_model": "GPT-2 (124M parameters)",
+            "fine_tuning": {
+                "method": "LoRA (Low-Rank Adaptation)",
+                "technique": "PEFT (Parameter-Efficient Fine-Tuning)",
+                "description": "LoRA adds trainable low-rank matrices to attention layers, enabling efficient fine-tuning with minimal parameters",
+                "advantages": [
+                    "Reduces trainable parameters by ~99%",
+                    "Prevents catastrophic forgetting",
+                    "Faster training and lower memory usage",
+                    "Easy to swap between different LoRA adapters"
+                ],
+                "lora_config": {
+                    "rank": 8,
+                    "alpha": 16,
+                    "target_modules": [
+                        "q_proj",
+                        "v_proj"
+                    ],
+                    "dropout": 0.1
+                }
+            },
+            "training_data": "Surgical robotics knowledge base + phase-tool mappings",
+            "specialization": "Surgical robotics concepts and technical explanations",
+            "use_case": "Primary model for surgical and technical questions"
+        },
+        "sota_gpt4o": {
+            "name": "GPT-4o",
+            "type": "State-of-the-art model",
+            "provider": "OpenAI API",
+            "parameters": "Unknown (proprietary)",
+            "capabilities": [
+                "Highest quality responses",
+                "Broad general knowledge",
+                "Strong reasoning abilities",
+                "Multimodal understanding"
+            ],
+            "use_case": "Best quality responses for complex questions",
+            "limitations": "Requires API key and internet connection"
+        }
+    },
+    "datasets": {
+        "cholec80": {
+            "description": "Cholecystectomy surgery dataset with 80 videos",
+            "purpose": "Training CNN and LSTM for surgical phase and tool recognition",
+            "annotations": "Frame-level tool and phase labels",
+            "phases": 7,
+            "tools": 7,
+            "use": "Training vision models (CNN + LSTM)"
+        },
+        "m2cai16_workflow": {
+            "description": "M2CAI16 surgical workflow challenge dataset",
+            "purpose": "Testing and evaluation of phase recognition",
+            "annotations": "Phase labels for workflow recognition",
+            "videos": 14,
+            "use": "Testing and evaluation"
+        },
+        "dailydialog": {
+            "description": "Multi-turn dialogue dataset for conversational AI",
+            "purpose": "Training language models for natural conversation",
+            "size": "13,118 dialogues with 102,979 utterances",
+            "topics": "Daily life conversations covering various topics",
+            "annotations": "Dialogue acts and emotion labels",
+            "use": "Fine-tuning GPT-2 for conversational abilities and dialogue understanding"
+        },
+        "surgical_robotics_knowledge": {
+            "description": "Custom knowledge base for surgical robotics concepts",
+            "purpose": "Training language model on domain-specific knowledge",
+            "contents": [
+                "Phase-to-control algorithm mappings",
+                "Tool-to-robotic technique mappings",
+                "Surgical robotics terminology and concepts"
+            ],
+            "format": "JSON files with structured Q&A pairs",
+            "use": "Fine-tuning Core GPT-2 model with LoRA"
+        }
+    },
+    "interactive_qa": {
+        "description": "Real-time question-answering system with context awareness",
+        "features": {
+            "context_awareness": "Bot receives full video analysis context including phase-to-tools mapping",
+            "conversation_history": "Maintains conversation log with timestamps",
+            "text_to_speech": "macOS 'say' command for bot voice (optional)",
+            "commands": [
+                "/summary - Show video summary",
+                "/phases - List all detected phases",
+                "/tools - List all detected tools",
+                "/phase <name> - Show tools for specific phase",
+                "/tts - Toggle text-to-speech",
+                "/save - Save conversation to JSON",
+                "/quit - Exit session"
+            ]
+        },
+        "model_selection": "User can choose dummy/core/sota model via --model-type flag",
+        "output": "Conversation saved as JSON in results/final_results/"
+    },
+    "techniques_and_concepts": {
+        "transfer_learning": {
+            "description": "Using pre-trained ImageNet weights for ResNet-50 backbone",
+            "benefit": "Leverages learned visual features, faster convergence, better performance"
+        },
+        "multi_task_learning": {
+            "description": "CNN simultaneously predicts tools and phases",
+            "benefit": "Shared representations improve both tasks, more efficient than separate models"
+        },
+        "attention_mechanism": {
+            "description": "LSTM learns to focus on important time steps",
+            "benefit": "Improves temporal modeling by weighting relevant frames higher"
+        },
+        "lora_peft": {
+            "description": "Low-Rank Adaptation for Parameter-Efficient Fine-Tuning",
+            "how_it_works": "Adds trainable low-rank decomposition matrices (A and B) to frozen pre-trained weights: W' = W + BA",
+            "parameters": "Only ~0.1-1% of original model parameters are trainable",
+            "benefit": "Efficient fine-tuning without modifying base model weights"
+        },
+        "sliding_window": {
+            "description": "LSTM processes overlapping windows of 16 frames with 8-frame stride",
+            "benefit": "Captures temporal context while maintaining computational efficiency"
+        },
+        "confidence_weighted_voting": {
+            "description": "Aggregates LSTM predictions by weighting votes with confidence scores",
+            "benefit": "More reliable predictions by trusting high-confidence windows more"
+        },
+        "performance_metrics": {
+            "description": "Performance metrics from M2CAI16 workflow test dataset (5 videos: 1, 4, 6, 12, 14)",
+            "test_date": "2024-12-14",
+            "sample_rate": "1 frame per second (every 25 frames)",
+            "cnn_phase_recognition": {
+                "overall_accuracy": "34.8%",
+                "f1_score": "33.2%",
+                "notes": "Frame-level predictions without temporal smoothing. High variance across videos (4.6% to 77.1%)",
+                "best_video": "Video 12: 77.1% accuracy",
+                "worst_video": "Video 1: 4.6% accuracy",
+                "per_video_accuracy": {
+                    "video_1": "4.6%",
+                    "video_4": "25.0%",
+                    "video_6": "21.2%",
+                    "video_12": "77.1%",
+                    "video_14": "46.2%"
+                }
+            },
+            "cnn_tool_detection": {
+                "type": "Multi-label classification with phase-aware evaluation",
+                "phase_aware_accuracy": "70.1%",
+                "notes": "Tools evaluated based on expected tools for detected phase",
+                "per_video_phase_aware_accuracy": {
+                    "video_1": "46.6%",
+                    "video_4": "62.6%",
+                    "video_6": "57.1%",
+                    "video_12": "88.0%",
+                    "video_14": "81.1%"
+                }
+            },
+            "lstm_phase_recognition": {
+                "overall_accuracy": "63.7%",
+                "f1_score": "62.7%",
+                "notes": "Temporal smoothing with attention mechanism significantly improves performance",
+                "best_video": "Video 14: 91.5% accuracy",
+                "worst_video": "Video 4: 29.5% accuracy",
+                "per_video_accuracy": {
+                    "video_1": "60.2%",
+                    "video_4": "29.5%",
+                    "video_6": "47.8%",
+                    "video_12": "89.6%",
+                    "video_14": "91.5%"
+                },
+                "improvement_over_cnn": "+28.9% accuracy",
+                "f1_improvement": "+29.5%"
+            },
+            "inference_speed": {
+                "cnn_fps_range": "7.2 - 17.4 frames/second (CPU)",
+                "cnn_fps_average": "~10.5 frames/second",
+                "lstm_windows": "481 - 946 windows/second (CPU)",
+                "total_pipeline_40min_video": "~4-7 minutes at 1 FPS sampling",
+                "gpu_speedup": "~3-5x faster on GPU (estimated)",
+                "notes": "Tested on Intel CPU with varying video lengths"
+            },
+            "key_observations": {
+                "high_variance": "Performance varies significantly across videos (4.6% to 91.5%)",
+                "lstm_benefit": "LSTM provides substantial improvement (+28.9% avg) through temporal context",
+                "best_performance": "Video 12 and 14 show strong performance (>89% LSTM accuracy)",
+                "challenging_videos": "Videos 1, 4, 6 show lower accuracy, likely due to unusual surgical variations or lighting",
+                "tool_detection": "Phase-aware tool accuracy ranges from 46.6% to 88.0%"
+            }
+        },
+        "system_capabilities": {
+            "what_i_can_do": [
+                "Analyze surgical videos to detect phases and tools",
+                "Answer questions about detected phases and tools in specific videos",
+                "Explain robotic surgical concepts and algorithms",
+                "Provide technical details about my own architecture",
+                "Generate educational content about surgical robotics",
+                "Speak responses using text-to-speech (macOS)",
+                "Save conversation history for later review"
+            ],
+            "what_i_cannot_do": [
+                "Analyze videos in real-time (requires preprocessing)",
+                "Detect phases/tools not in my training data",
+                "Provide medical advice or clinical decisions",
+                "Access information beyond my knowledge bases",
+                "Understand non-surgical videos"
+            ]
+        },
+        "self_awareness": {
+            "my_architecture": "I am a two-stage vision system (CNN + LSTM) combined with language models for Q&A",
+            "my_training": "My vision models were trained on Cholec80 dataset, my language model was fine-tuned on surgical robotics knowledge",
+            "my_purpose": "I help users understand surgical videos by detecting what's happening and explaining the robotic concepts involved",
+            "my_limitations": "I can only detect 7 phases and 7 tools that I was trained on. I cannot provide medical advice.",
+            "how_i_work": "I first analyze your video frame-by-frame with a CNN, then use an LSTM to understand temporal patterns, then answer your questions using my language model and knowledge bases"
+        }
+    }
+}

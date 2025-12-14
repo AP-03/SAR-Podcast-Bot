@@ -19,6 +19,9 @@ from models.action_LSTM import ActionLSTMWithAttention
 from dataset.transform import get_basic_transforms
 from configs.labels import PHASES, TOOLS
 
+# Import narration generation components
+from narration_generator import NarrationGenerator, VisionResultsLoader, generate_podcast_script
+
 
 class VideoProcessor:
     """Process surgical video through trained CNN to extract frame-level predictions"""
@@ -190,7 +193,7 @@ class ActionPredictor:
             num_actions: Number of action/phase classes
             device: 'cuda' or 'cpu'
         """
-        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(device if torch.cuda_is_available() else 'cpu')
         print(f"Loading LSTM model on device: {self.device}")
         
         # Load model
@@ -335,17 +338,436 @@ class ActionPredictor:
         return frame_predictions, frame_confidences
 
 
+def speak_text(text, voice="Samantha", rate=175):
+    """
+    Convert text to speech using macOS 'say' command
+    
+    Args:
+        text: Text to speak
+        voice: Voice to use (default: Samantha)
+        rate: Speaking rate in words per minute (default: 175)
+    """
+    import subprocess
+    import platform
+    
+    # Only works on macOS
+    if platform.system() != "Darwin":
+        return
+    
+    try:
+        # Use macOS 'say' command
+        subprocess.run(
+            ['say', '-v', voice, '-r', str(rate), text],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception as e:
+        print(f"  (TTS error: {e})")
+
+
+def listen_to_speech(timeout=5, phrase_time_limit=10):
+    """
+    Listen to microphone and convert speech to text using Whisper
+    
+    Args:
+        timeout: Seconds to wait for speech to start (not used with Whisper, kept for compatibility)
+        phrase_time_limit: Maximum seconds to record
+    
+    Returns:
+        str: Transcribed text, or None if failed
+    """
+    try:
+        import whisper
+        import sounddevice as sd
+        import numpy as np
+        import tempfile
+        import scipy.io.wavfile as wavfile
+    except ImportError as e:
+        missing = str(e).split("'")[1] if "'" in str(e) else "required library"
+        print(f"  ❌ {missing} not installed.")
+        print(f"  📦 Install with: pip install openai-whisper sounddevice scipy")
+        return None
+    
+    # Load Whisper model (cache it globally to avoid reloading)
+    if not hasattr(listen_to_speech, 'whisper_model'):
+        print("📥 Loading Whisper model (one-time, ~39MB)...")
+        listen_to_speech.whisper_model = whisper.load_model("tiny")
+    
+    try:
+        print("🎤 Listening... (speak now, will auto-stop after silence)")
+        
+        # Record audio with better parameters
+        sample_rate = 16000  # Whisper expects 16kHz
+        duration = phrase_time_limit
+        
+        # Record audio
+        audio_data = sd.rec(
+            int(duration * sample_rate),
+            samplerate=sample_rate,
+            channels=1,
+            dtype='float32',
+            blocking=True  # Wait until recording is done
+        )
+        
+        print("🔄 Processing speech...")
+        
+        # Save to temporary WAV file
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio:
+            temp_path = temp_audio.name
+            # Normalize audio to prevent clipping
+            audio_normalized = np.int16(audio_data * 32767)
+            wavfile.write(temp_path, sample_rate, audio_normalized)
+        
+        # Transcribe with Whisper
+        result = listen_to_speech.whisper_model.transcribe(
+            temp_path, 
+            language='english',
+            fp16=False,  # Use FP32 on CPU
+            verbose=False  # Suppress warnings
+        )
+        text = result['text'].strip()
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_path)
+        
+        if text:
+            return text
+        else:
+            print("  ❓ No speech detected")
+            return None
+            
+    except KeyboardInterrupt:
+        print("\n  ⏸️  Recording cancelled")
+        sd.stop()
+        return None
+    except Exception as e:
+        print(f"  ❌ Speech recognition error: {e}")
+        sd.stop()
+        return None
+
+
+
+
+def interactive_qa_session(generator, segments, video_name, enable_tts=False, enable_voice_input=False):
+    """
+    Interactive Q&A session about the processed video with optional voice input
+    
+    Args:
+        generator: NarrationGenerator instance
+        segments: List of phase segments from video
+        video_name: Name of the video
+    """
+    import json
+    from datetime import datetime
+    from pathlib import Path
+    
+    # Load self-awareness knowledge base
+    models_info_path = Path(__file__).parent / "KnowledgeBases" / "models_info.json"
+    system_knowledge = {}
+    if models_info_path.exists():
+        with open(models_info_path, 'r') as f:
+            system_knowledge = json.load(f)
+    
+    # Prepare context about the video
+    phase_summary = {}
+    for seg in segments:
+        phase = seg['phase']
+        if phase not in phase_summary:
+            phase_summary[phase] = {
+                'duration': 0,
+                'tools': set(),
+                'count': 0
+            }
+        phase_summary[phase]['duration'] += seg['duration']
+        phase_summary[phase]['tools'].update(seg['tools'])
+        phase_summary[phase]['count'] += 1
+    
+    # Build context string with phase-to-tools mapping
+    context_parts = [f"Video: {video_name}"]
+    context_parts.append(f"Total duration: {segments[-1]['end_time']:.1f}s")
+    context_parts.append(f"Phases detected: {', '.join(phase_summary.keys())}")
+    context_parts.append("\nPhase-to-Tools Mapping:")
+    for phase, info in phase_summary.items():
+        tools_str = ', '.join(sorted(info['tools'])) if info['tools'] else 'None'
+        context_parts.append(f"  {phase}: {tools_str}")
+    
+    # Add system self-awareness
+    if system_knowledge:
+        context_parts.append("\n=== SYSTEM INFORMATION ===")
+        context_parts.append(f"I am {system_knowledge.get('system_name', 'SAR-Podcast-Bot')}")
+        context_parts.append(f"My vision pipeline: {system_knowledge.get('vision_pipeline', {}).get('architecture', 'CNN + LSTM')}")
+        
+        # Add CNN info
+        cnn_info = system_knowledge.get('vision_pipeline', {}).get('stage_1_cnn', {})
+        if cnn_info:
+            context_parts.append(f"CNN: {cnn_info.get('model_name', 'ToolCNN')} with {cnn_info.get('backbone', {}).get('architecture', 'ResNet-50')} backbone")
+        
+        # Add LSTM info
+        lstm_info = system_knowledge.get('vision_pipeline', {}).get('stage_2_lstm', {})
+        if lstm_info:
+            context_parts.append(f"LSTM: {lstm_info.get('model_name', 'ActionLSTMWithAttention')} with attention mechanism")
+        
+        # Add language model info - IMPORTANT: Tell bot which model it's currently using
+        lm_info = system_knowledge.get('language_models', {})
+        context_parts.append(f"Language models available: {', '.join(lm_info.keys())}")
+        context_parts.append(f"CURRENTLY ACTIVE LANGUAGE MODEL: {generator.model_type}")
+        
+        # Add details about the active model
+        if generator.model_type == 'sota':
+            context_parts.append("I am currently using GPT-4o (SOTA model) via OpenAI API")
+        elif generator.model_type == 'core':
+            context_parts.append("I am currently using fine-tuned GPT-2 (Core model) with LoRA")
+        elif generator.model_type == 'dummy':
+            context_parts.append("I am currently using Dummy LSTM (baseline model)")
+    
+    video_context = "\n".join(context_parts)
+    
+    # Conversation history
+    conversation = []
+    
+    print("\n" + "=" * 70)
+    print("🎙️  INTERACTIVE Q&A SESSION")
+    print("=" * 70)
+    print(f"\n{video_context}\n")
+    print("Ask questions about the video, surgical phases, tools, or AI concepts.")
+    print("The bot has access to the video analysis results.\n")
+    
+    # Check Whisper availability if voice input is enabled
+    if enable_voice_input:
+        try:
+            import whisper
+            import sounddevice as sd
+            # Whisper is available
+        except ImportError as e:
+            missing = str(e).split("'")[1] if "'" in str(e) else "required library"
+            print(f"⚠️  {missing} not installed - voice input disabled")
+            print("   Install with: pip install openai-whisper sounddevice scipy")
+            print("   You can still toggle it on later with /voice\n")
+            enable_voice_input = False
+    
+    # TTS and Voice Input status
+    tts_status = "🔊 ON" if enable_tts else "🔇 OFF"
+    voice_status = "🎤 ON" if enable_voice_input else "⌨️  OFF"
+    print(f"Text-to-Speech: {tts_status}")
+    print(f"Voice Input: {voice_status}\n")
+    
+    print("Commands:")
+    print("  /summary       - Show video summary")
+    print("  /phases        - List all detected phases")
+    print("  /tools         - List all detected tools")
+    print("  /phase <name>  - Show tools used in a specific phase")
+    print("  /system        - Show system architecture and capabilities")
+    print("  /tts           - Toggle text-to-speech on/off")
+    print("  /voice         - Toggle voice input on/off")
+    print("  /save          - Save conversation")
+    print("  /quit          - Exit Q&A session")
+    print("\n" + "-" * 70 + "\n")
+    
+    while True:
+        try:
+            # Get input (voice or text)
+            if enable_voice_input:
+                question = listen_to_speech()
+                if question is None:
+                    continue
+                print(f"You (voice): {question}")
+            else:
+                question = input("You: ").strip()
+            
+            if not question:
+                continue
+            
+            # Handle commands
+            if question.startswith('/'):
+                cmd = question[1:].lower()
+                
+                if cmd in ['quit', 'exit', 'q']:
+                    print("\n👋 Ending Q&A session...")
+                    break
+                
+                elif cmd == 'summary':
+                    print(f"\n📊 VIDEO SUMMARY:")
+                    print(f"  Video: {video_name}")
+                    print(f"  Duration: {segments[-1]['end_time']:.1f}s")
+                    print(f"  Segments: {len(segments)}")
+                    for phase, info in phase_summary.items():
+                        print(f"  • {phase}: {info['duration']:.1f}s ({info['count']} segments)")
+                    print()
+                    continue
+                
+                elif cmd == 'phases':
+                    print(f"\n🔍 DETECTED PHASES:")
+                    for i, seg in enumerate(segments, 1):
+                        print(f"  {i}. {seg['phase']} ({seg['start_time']:.1f}s - {seg['end_time']:.1f}s)")
+                    print()
+                    continue
+                
+                elif cmd == 'tools':
+                    print(f"\n🔧 DETECTED TOOLS:")
+                    all_tools = set()
+                    for info in phase_summary.values():
+                        all_tools.update(info['tools'])
+                    for tool in sorted(all_tools):
+                        print(f"  • {tool}")
+                    print()
+                    continue
+                
+                elif cmd.startswith('phase '):
+                    # /phase <phase_name> - Show tools for specific phase
+                    phase_name = cmd[6:].strip()
+                    # Try to find matching phase (case-insensitive partial match)
+                    matching_phases = [p for p in phase_summary.keys() if phase_name.lower() in p.lower()]
+                    
+                    if matching_phases:
+                        for phase in matching_phases:
+                            info = phase_summary[phase]
+                            tools_str = ', '.join(sorted(info['tools'])) if info['tools'] else 'None detected'
+                            print(f"\n🔍 PHASE: {phase}")
+                            print(f"  Duration: {info['duration']:.1f}s ({info['count']} segments)")
+                            print(f"  Tools: {tools_str}")
+                        print()
+                    else:
+                        print(f"\n❌ Phase '{phase_name}' not found. Use /phases to see all phases.\n")
+                    continue
+                
+                elif cmd == 'system':
+                    # Show system information
+                    if system_knowledge:
+                        print(f"\n🤖 SYSTEM ARCHITECTURE:")
+                        print(f"  Name: {system_knowledge.get('system_name', 'SAR-Podcast-Bot')}")
+                        print(f"  Version: {system_knowledge.get('version', 'Unknown')}")
+                        print(f"  Description: {system_knowledge.get('description', 'N/A')}")
+                        
+                        vision = system_knowledge.get('vision_pipeline', {})
+                        print(f"\n📹 VISION PIPELINE: {vision.get('architecture', 'CNN + LSTM')}")
+                        
+                        cnn = vision.get('stage_1_cnn', {})
+                        if cnn:
+                            print(f"  CNN: {cnn.get('model_name', 'ToolCNN')}")
+                            backbone = cnn.get('backbone', {})
+                            print(f"    Backbone: {backbone.get('architecture', 'ResNet-50')} (pretrained on {backbone.get('pretrained', 'ImageNet')})")
+                            print(f"    Feature dim: {backbone.get('feature_dimension', 2048)}")
+                        
+                        lstm = vision.get('stage_2_lstm', {})
+                        if lstm:
+                            print(f"  LSTM: {lstm.get('model_name', 'ActionLSTMWithAttention')}")
+                            arch = lstm.get('architecture', {})
+                            print(f"    Hidden dim: {arch.get('hidden_dimension', 128)}")
+                            print(f"    Layers: {arch.get('num_layers', 2)}")
+                            print(f"    Bidirectional: {arch.get('bidirectional', True)}")
+                            print(f"    Attention: {lstm.get('attention_mechanism', {}).get('type', 'Yes')}")
+                        
+                        lms = system_knowledge.get('language_models', {})
+                        print(f"\n💬 LANGUAGE MODELS:")
+                        for lm_name, lm_info in lms.items():
+                            print(f"  • {lm_info.get('name', lm_name)}: {lm_info.get('type', 'Unknown')}")
+                        
+                        caps = system_knowledge.get('system_capabilities', {})
+                        print(f"\n✅ WHAT I CAN DO:")
+                        for cap in caps.get('what_i_can_do', [])[:5]:
+                            print(f"  • {cap}")
+                        
+                        print(f"\n❌ LIMITATIONS:")
+                        for lim in caps.get('what_i_cannot_do', [])[:3]:
+                            print(f"  • {lim}")
+                    else:
+                        print("\n❌ System knowledge base not loaded.\n")
+                    print()
+                    continue
+                
+                elif cmd == 'tts':
+                    # Toggle TTS
+                    enable_tts = not enable_tts
+                    tts_status = "🔊 ON" if enable_tts else "🔇 OFF"
+                    print(f"\nText-to-Speech: {tts_status}\n")
+                    continue
+                
+                elif cmd == 'voice':
+                    # Toggle voice input
+                    enable_voice_input = not enable_voice_input
+                    voice_status = "🎤 ON" if enable_voice_input else "⌨️  OFF"
+                    print(f"\nVoice Input: {voice_status}\n")
+                    if enable_voice_input:
+                        print("💡 Speak your questions instead of typing!")
+                    continue
+                
+                elif cmd == 'save':
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filepath = Path(f"results/final_results/qa_session_{timestamp}.json")
+                    filepath.parent.mkdir(parents=True, exist_ok=True)
+                    with open(filepath, 'w') as f:
+                        json.dump({
+                            'video': video_name,
+                            'context': video_context,
+                            'conversation': conversation
+                        }, f, indent=2)
+                    print(f"💾 Conversation saved to: {filepath}\n")
+                    continue
+                
+                else:
+                    print(f"Unknown command: {cmd}\n")
+                    continue
+            
+            # Generate response with video context
+            # Add context to question for better responses
+            contextual_question = f"Context: {video_context}\n\nQuestion: {question}"
+            
+            response = generator.generate_response(contextual_question, max_length=300, temperature=0.7)
+            
+            # Store in conversation
+            conversation.append({
+                'timestamp': datetime.now().isoformat(),
+                'question': question,
+                'response': response,
+                'model': generator.model_type
+            })
+            
+            print(f"\n🤖 Bot [{generator.model_type}]:")
+            print(response)
+            print()
+            
+            # Speak response if TTS is enabled
+            if enable_tts:
+                speak_text(response)
+            
+        except KeyboardInterrupt:
+            print("\n\n👋 Session interrupted. Goodbye!")
+            break
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n")
+            continue
+    
+    # Offer to save conversation
+    if conversation:
+        save = input("\n💾 Save conversation? (y/n): ").strip().lower()
+        if save == 'y':
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = Path(f"results/final_results/qa_session_{timestamp}.json")
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump({
+                    'video': video_name,
+                    'context': video_context,
+                    'conversation': conversation
+                }, f, indent=2)
+            print(f"💾 Saved to: {filepath}")
+    
+    return conversation
+
 def main():
     """Main pipeline execution"""
     import argparse
     
     parser = argparse.ArgumentParser(description="Process surgical video through CNN + LSTM pipeline")
-    parser.add_argument('--video', type=str, required=True, help='Path to input video file')
-    parser.add_argument('--cnn-model', type=str, default='src/results/tool_results/tool_detection_model_best.pth',
+    parser.add_argument('--video', type=str, help='Path to input video file (not needed if using --load-npz)')
+    parser.add_argument('--load-npz', type=str, help='Load pre-computed NPZ file instead of processing video')
+    parser.add_argument('--cnn-model', type=str, default='results/tool_results/tool_detection_model_best.pth',
                        help='Path to trained CNN checkpoint')
-    parser.add_argument('--lstm-model', type=str, default='src/results/phase_results/best_lstm_attention_model.pth',
+    parser.add_argument('--lstm-model', type=str, default='results/phase_results/best_lstm_attention_model.pth',
                        help='Path to trained LSTM checkpoint')
-    parser.add_argument('--output', type=str, default='src/results/final_predictions.npz',
+    parser.add_argument('--output', type=str, default='results/final_results/predictions.npz',
                        help='Output path for predictions')
     parser.add_argument('--sample-rate', type=int, default=1,
                        help='Process every Nth frame (default: 1)')
@@ -358,89 +780,170 @@ def main():
     parser.add_argument('--skip-lstm', action='store_true',
                        help='Skip LSTM processing (CNN only)')
     
+    # Interactive Q&A arguments
+    parser.add_argument('--interactive-qa', action='store_true',
+                       help='Start interactive Q&A session after processing')
+    parser.add_argument('--model-type', type=str, default='core',
+                       choices=['dummy', 'core', 'sota'],
+                       help='Language model to use for Q&A')
+    parser.add_argument('--lm-model-path', type=str,
+                       default='src/results/core_results/gpt2_best_model_intial',
+                       help='Path to language model (for core/dummy)')
+    parser.add_argument('--enable-tts', action='store_true',
+                       help='Enable text-to-speech for bot responses (macOS only)')
+    parser.add_argument('--enable-voice-input', action='store_true',
+                       help='Enable voice input for questions (requires SpeechRecognition)')
+    
     args = parser.parse_args()
     
-    print("="*60)
+    # Validate arguments
+    if not args.load_npz and not args.video:
+        parser.error("Either --video or --load-npz must be specified")
+    
+    print("\n" + "="*60)
     print("SAR-PODCAST-BOT PIPELINE")
     print("="*60)
     
-    # Step 1: Process video through CNN
-    print("\n[STEP 1] Processing video through CNN...")
-    cnn_processor = VideoProcessor(
-        model_path=args.cnn_model,
-        device=args.device
-    )
-    
-    cnn_results = cnn_processor.process_video(
-        video_path=args.video,
-        sample_rate=args.sample_rate
-    )
-    
-    # Step 2: Process features through LSTM (if not skipped)
-    if not args.skip_lstm:
-        print("\n[STEP 2] Processing CNN features through LSTM...")
-        action_predictor = ActionPredictor(
-            model_path=args.lstm_model,
-            num_actions=len(PHASES),
+    # Check if we should skip vision processing
+    if args.load_npz:
+        print("\n📂 Loading pre-computed results from NPZ file...")
+        print(f"   File: {args.load_npz}")
+        output_path = Path(args.load_npz)
+        if not output_path.exists():
+            print(f"❌ Error: NPZ file not found: {args.load_npz}")
+            return # Exit if the specified NPZ file doesn't exist
+        
+        # Load the results to populate cnn_results and lstm_results for later summary/Q&A
+        loaded_data = np.load(output_path, allow_pickle=True)
+        cnn_results = {
+            'frame_indices': loaded_data['frame_indices'],
+            'timestamps': loaded_data['timestamps'],
+            'tool_predictions': loaded_data['tool_predictions'],
+            'tool_confidences': loaded_data['tool_confidences'],
+            'phase_predictions': loaded_data['phase_predictions'],
+            'phase_confidences': loaded_data['phase_confidences'],
+            'features': loaded_data['features']
+        }
+        
+        # Check if LSTM results are present in the loaded NPZ
+        if 'lstm_actions' in loaded_data:
+            cnn_results['lstm_actions'] = loaded_data['lstm_actions']
+            cnn_results['lstm_confidences'] = loaded_data['lstm_confidences']
+            # Note: lstm_windows is not saved in the current save logic, so we won't load it
+            args.skip_lstm = False # Ensure summary reflects LSTM was processed
+        else:
+            args.skip_lstm = True # Ensure summary reflects LSTM was skipped
+            
+        video_name = output_path.stem.replace('_predictions', '').replace('predictions', 'video')
+        print(f"   Loaded results for video: {video_name}")
+        print(f"   Results will be used for Q&A and summary.")
+        
+    else:
+        # Initialize models and process video
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Step 1: Process video through CNN
+        print("\n[STEP 1] Processing video through CNN...")
+        cnn_processor = VideoProcessor(
+            model_path=args.cnn_model,
             device=args.device
         )
         
-        lstm_results = action_predictor.predict_sequence(
-            features=cnn_results['features'],
-            window_size=args.window_size,
-            stride=args.stride
+        cnn_results = cnn_processor.process_video(
+            video_path=args.video,
+            sample_rate=args.sample_rate
         )
         
-        # Aggregate to frame-level
-        frame_actions, frame_action_conf = action_predictor.aggregate_predictions(
-            lstm_results, 
-            len(cnn_results['frame_indices'])
-        )
+        # Step 2: Process features through LSTM (if not skipped)
+        if not args.skip_lstm:
+            print("\n[STEP 2] Processing CNN features through LSTM...")
+            action_predictor = ActionPredictor(
+                model_path=args.lstm_model,
+                num_actions=len(PHASES),
+                device=args.device
+            )
+            
+            lstm_results = action_predictor.predict_sequence(
+                features=cnn_results['features'],
+                window_size=args.window_size,
+                stride=args.stride
+            )
+            
+            # Aggregate to frame-level
+            frame_actions, frame_action_conf = action_predictor.aggregate_predictions(
+                lstm_results, 
+                len(cnn_results['frame_indices'])
+            )
+            
+            # Add to results
+            cnn_results['lstm_actions'] = frame_actions
+            cnn_results['lstm_confidences'] = frame_action_conf
+            cnn_results['lstm_windows'] = lstm_results
         
-        # Add to results
-        cnn_results['lstm_actions'] = frame_actions
-        cnn_results['lstm_confidences'] = frame_action_conf
-        cnn_results['lstm_windows'] = lstm_results
-    
-    # Save final results
-    print("\n[STEP 3] Saving results...")
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Step 3: Save results
+        print("\n[STEP 3] Saving results...")
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Prepare arrays for saving
+        frame_indices = np.array(cnn_results['frame_indices'])
+        timestamps = np.array(cnn_results['timestamps'])
+        tool_predictions = np.array(cnn_results['tool_predictions'], dtype=object)
+        tool_confidences = np.array(cnn_results['tool_confidences'], dtype=object)
+        phase_predictions = np.array(cnn_results['phase_predictions'])
+        phase_confidences = np.array(cnn_results['phase_confidences'], dtype=object)
+        
+        if args.skip_lstm:
+            np.savez_compressed(
+                output_path,
+                frame_indices=frame_indices,
+                timestamps=timestamps,
+                tool_predictions=tool_predictions,
+                tool_confidences=tool_confidences,
+                phase_predictions=phase_predictions,
+                phase_confidences=phase_confidences,
+                features=cnn_results['features']
+            )
+        else:
+            np.savez_compressed(
+                output_path,
+                frame_indices=frame_indices,
+                timestamps=timestamps,
+                tool_predictions=tool_predictions,
+                tool_confidences=tool_confidences,
+                phase_predictions=phase_predictions,
+                phase_confidences=phase_confidences,
+                lstm_actions=np.array(cnn_results['lstm_actions']),
+                lstm_confidences=np.array(cnn_results['lstm_confidences']),
+                features=cnn_results['features']
+            )
+        
+        print(f"Results saved to: {output_path}")
+        video_name = Path(args.video).stem
 
-    # Ensure ragged lists (tools) are stored safely
-    frame_indices = np.array(cnn_results['frame_indices'])
-    timestamps = np.array(cnn_results['timestamps'])
-    tool_predictions = np.array(cnn_results['tool_predictions'], dtype=object)
-    tool_confidences = np.array(cnn_results['tool_confidences'], dtype=object)
-    phase_predictions = np.array(cnn_results['phase_predictions'])
-    phase_confidences = np.array(cnn_results['phase_confidences'], dtype=object)
     
-    if args.skip_lstm:
-        np.savez_compressed(
-            output_path,
-            frame_indices=frame_indices,
-            timestamps=timestamps,
-            tool_predictions=tool_predictions,
-            tool_confidences=tool_confidences,
-            phase_predictions=phase_predictions,
-            phase_confidences=phase_confidences,
-            features=cnn_results['features']
+    # Step 4: Interactive Q&A (optional)
+    if args.interactive_qa:
+        print("\n[STEP 4] Starting interactive Q&A session...")
+        
+        # Load the NPZ we just saved
+        loader = VisionResultsLoader(str(output_path))
+        segments = loader.get_phase_segments(min_segment_duration=2.0)
+        
+        print(f"Detected {len(segments)} phase segments")
+        
+        # Initialize narration generator with selected model
+        print(f"Initializing {args.model_type} model...")
+        generator = NarrationGenerator(
+            model_path=args.lm_model_path if args.model_type != 'sota' else None,
+            device=args.device,
+            model_type=args.model_type
         )
-    else:
-        np.savez_compressed(
-            output_path,
-            frame_indices=frame_indices,
-            timestamps=timestamps,
-            tool_predictions=tool_predictions,
-            tool_confidences=tool_confidences,
-            phase_predictions=phase_predictions,
-            phase_confidences=phase_confidences,
-            lstm_actions=np.array(cnn_results['lstm_actions']),
-            lstm_confidences=np.array(cnn_results['lstm_confidences']),
-            features=cnn_results['features']
-        )
-    
-    print(f"Results saved to: {output_path}")
+        
+        # Start interactive Q&A session (video_name already set above)
+        conversation = interactive_qa_session(generator, segments, video_name,
+                                             enable_tts=args.enable_tts,
+                                             enable_voice_input=args.enable_voice_input)
     
     # Print summary
     print("\n" + "="*60)
@@ -461,11 +964,16 @@ def main():
         for action, count in action_counts.most_common():
             print(f"  {action}: {count} frames ({count/len(cnn_results['lstm_actions'])*100:.1f}%)")
         
-        print(f"\nLSTM windows processed: {len(lstm_results['predictions'])}")
-        print(f"Average confidence: {np.mean(lstm_results['confidences']):.3f}")
+        # Only show LSTM windows info if we just processed the video (not when loading from NPZ)
+        if not args.load_npz and 'lstm_windows' in cnn_results:
+            print(f"\nLSTM windows processed: {len(cnn_results['lstm_windows']['predictions'])}")
+            print(f"Average confidence: {np.mean(cnn_results['lstm_windows']['confidences']):.3f}")
     
     print("="*60)
-    print("\nPipeline complete! Ready for GPT-4o generation.")
+    if args.interactive_qa:
+        print("\nPipeline complete! Q&A session ended.")
+    else:
+        print("\nPipeline complete! Use --interactive-qa to start Q&A session.")
     print("="*60)
 
 
