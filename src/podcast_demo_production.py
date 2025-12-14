@@ -4,7 +4,7 @@ SAR-PODCAST-BOT: Production-Ready Podcast Demo (v2)
 FIXED: Local PEFT/LoRA model loading
 
 Usage:
-    python podcast_demo_v2.py --model path/to/gpt2_best_model_intial --demo
+    python podcast_demo_v2.py --model path/to/gpt2_best_model --demo
 """
 
 import os
@@ -434,7 +434,7 @@ def interactive_mode(bot):
 def main():
     parser = argparse.ArgumentParser(description="SAR-Podcast-Bot Demo v2")
     parser.add_argument('--model', type=str, 
-                       default='src/results/core_results/gpt2_best_model_intial',
+                       default='src/results/gpt2_best_model',
                        help='Path to GPT-2 model')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--demo', action='store_true', help='Run full demo')
@@ -453,9 +453,9 @@ def main():
         
         # Try common paths
         alternatives = [
-            'src/results/core_results/gpt2_best_model_intial',
-            'results/core_results/gpt2_best_model_intial',
-            os.path.expanduser('~/University/SAR-Podcast-Bot/src/results/core_results/gpt2_best_model_intial'),
+            'src/results/gpt2_best_model',
+            'results/gpt2_best_model',
+            os.path.expanduser('~/University/SAR-Podcast-Bot/src/results/gpt2_best_model'),
         ]
         
         for alt in alternatives:

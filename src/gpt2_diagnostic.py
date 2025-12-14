@@ -469,7 +469,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', default='src/results/core_results/gpt2_best_model_intial')
+    parser.add_argument('--model', default='src/results/core_results_v3/gpt2_best_model_v3')
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--diagnose', action='store_true', help='Run diagnostics')
     parser.add_argument('--demo', action='store_true', help='Run improved demo')

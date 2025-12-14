@@ -481,7 +481,7 @@ def main():
     parser.add_argument('--npz', type=str, required=True,
                        help='Path to NPZ file from vision pipeline')
     parser.add_argument('--model', type=str, 
-                       default='src/results/core_results/gpt2_best_model',
+                       default='src/results/core_results_v3/gpt2_best_model_v3',
                        help='Path to trained GPT-2 model')
     parser.add_argument('--output', type=str, default='podcast_script.txt',
                        help='Output path for podcast script')
