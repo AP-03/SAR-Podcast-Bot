@@ -1,0 +1,54 @@
+{
+  "video": "test_workflow_video_12",
+  "context": "Video: test_workflow_video_12\nTotal duration: 2451.0s\nPhases detected: Preparation, CalotTriangleDissection, GallbladderDissection, ClippingCutting, CleaningCoagulation, GallbladderPackaging, GallbladderRetraction\n\nPhase-to-Tools Mapping:\n  Preparation: Bipolar, Grasper, Irrigator, SpecimenBag\n  CalotTriangleDissection: Grasper, Hook, Irrigator\n  GallbladderDissection: Bipolar, Clipper, Grasper, Hook, Irrigator\n  ClippingCutting: Clipper, Grasper, Scissors\n  CleaningCoagulation: Bipolar, Grasper, Irrigator, SpecimenBag\n  GallbladderPackaging: Bipolar, Clipper, Grasper, Irrigator, SpecimenBag\n  GallbladderRetraction: Grasper, Irrigator, SpecimenBag\n\n=== SYSTEM INFORMATION ===\nI am SAR-Podcast-Bot\nMy vision pipeline: CNN + LSTM\nCNN: ToolCNN (ResNet-50 based) with ResNet-50 backbone\nLSTM: ActionLSTMWithAttention with attention mechanism\nLanguage models available: description, dummy_lstm, core_gpt2, sota_gpt4o",
+  "conversation": [
+    {
+      "timestamp": "2025-12-14T17:56:07.980643",
+      "question": "tell me an ai joke",
+      "response": "Why did the robot go on a diet? \n\nBecause it had too many bytes!",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T17:56:53.599759",
+      "question": "alright what phases did you see in the video?>",
+      "response": "The phases detected in the video are: Preparation, CalotTriangleDissection, GallbladderDissection, ClippingCutting, CleaningCoagulation, GallbladderPackaging, and GallbladderRetraction.",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T17:57:20.960172",
+      "question": "what can you tell me about clipping cutting?",
+      "response": "Clipping and cutting are critical phases in robotic surgery, particularly in procedures like cholecystectomy. During the ClippingCutting phase, tools such as the clipper, grasper, and scissors are utilized to secure and cut blood vessels or tissue. This phase focuses on ensuring proper hemostasis (stopping bleeding) and facilitating the safe removal of the gallbladder. The use of robotic precision allows for more controlled and accurate movements, minimizing damage to surrounding tissues and enhancing patient safety.",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T17:58:03.975156",
+      "question": "okay what tools are using in clipping cutting in the video?",
+      "response": "In the ClippingCutting phase of the video, the tools used are the Clipper, Grasper, and Scissors.",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T17:58:32.688731",
+      "question": "ok how is it that you know what tools were used in the video?",
+      "response": "I can identify the tools used in the video by analyzing the phases of the surgical procedure with my vision pipeline, which combines a CNN for recognizing the tools and an LSTM for understanding their sequence of use. The mapping of tools to specific phases allows me to determine which tools were utilized at each stage of the workflow.",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T18:00:04.276050",
+      "question": "okay and how are you able to present this information and have conversation with me?",
+      "response": "I use a combination of advanced neural network models for understanding and processing information. The vision pipeline employs a CNN (Convolutional Neural Network) for recognizing tools and an LSTM (Long Short-Term Memory) model to interpret sequences and actions. This allows me to analyze the video data and engage in conversation by providing relevant responses based on the detected phases and tools used in the surgical workflow.",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T18:00:39.023086",
+      "question": "ok but how about your text model?",
+      "response": "My text model is based on the core GPT-2 architecture, designed for generating coherent and contextually relevant responses. It can generate text based on prompts and has capabilities for various conversational tasks. If you have specific questions about its functionalities, feel free to ask!",
+      "model": "sota"
+    },
+    {
+      "timestamp": "2025-12-14T18:01:19.027551",
+      "question": "what training parameters were used for the visual models?",
+      "response": "I'm sorry, but I don't have specific information about the training parameters used for the visual models, such as learning rates, batch sizes, or epochs. This data is typically specific to the implementation and experimentation settings chosen by the developers.",
+      "model": "sota"
+    }
+  ]
+}
