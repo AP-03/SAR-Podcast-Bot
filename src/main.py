@@ -194,7 +194,7 @@ class ActionPredictor:
             num_actions: Number of action/phase classes
             device: 'cuda' or 'cpu'
         """
-        self.device = torch.device(device if torch.cuda_is_available() else 'cpu')
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
         print(f"Loading LSTM model on device: {self.device}")
         
         # Load model
@@ -512,34 +512,11 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
         context_parts.append(f"  {phase}: {tools_str}")
     
     video_facts_context = "\n".join(context_parts)
-    # Add system self-awareness
+    # Add minimal system self-awareness (avoid confusing the model with technical details)
     if system_knowledge:
         context_parts.append("\n=== SYSTEM INFORMATION ===")
-        context_parts.append(f"I am {system_knowledge.get('system_name', 'SAR-Podcast-Bot')}")
-        context_parts.append(f"My vision pipeline: {system_knowledge.get('vision_pipeline', {}).get('architecture', 'CNN + LSTM')}")
-        
-        # Add CNN info
-        cnn_info = system_knowledge.get('vision_pipeline', {}).get('stage_1_cnn', {})
-        if cnn_info:
-            context_parts.append(f"CNN: {cnn_info.get('model_name', 'ToolCNN')} with {cnn_info.get('backbone', {}).get('architecture', 'ResNet-50')} backbone")
-        
-        # Add LSTM info
-        lstm_info = system_knowledge.get('vision_pipeline', {}).get('stage_2_lstm', {})
-        if lstm_info:
-            context_parts.append(f"LSTM: {lstm_info.get('model_name', 'ActionLSTMWithAttention')} with attention mechanism")
-        
-        # Add language model info - IMPORTANT: Tell bot which model it's currently using
-        lm_info = system_knowledge.get('language_models', {})
-        context_parts.append(f"Language models available: {', '.join(lm_info.keys())}")
-        context_parts.append(f"CURRENTLY ACTIVE LANGUAGE MODEL: {generator.model_type}")
-        
-        # Add details about the active model
-        if generator.model_type == 'sota':
-            context_parts.append("I am currently using GPT-4o (SOTA model) via OpenAI API")
-        elif generator.model_type == 'core':
-            context_parts.append("I am currently using fine-tuned GPT-2 (Core model) with LoRA")
-        elif generator.model_type == 'dummy':
-            context_parts.append("I am currently using Dummy LSTM (baseline model)")
+        context_parts.append(f"I am {system_knowledge.get('system_name', 'SAR-Podcast-Bot')}, an AI assistant for surgical robotics education")
+        context_parts.append(f"I analyze surgical videos and explain robotic concepts")
     
     video_context = "\n".join(context_parts)
     
