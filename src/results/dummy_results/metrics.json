@@ -1,0 +1,8 @@
+{
+  "final_train_loss": 7.720503462819272,
+  "final_val_loss": 8.067453671364763,
+  "best_val_loss": 8.067453671364763,
+  "final_perplexity": 3188.971313016186,
+  "epochs": 10,
+  "parameters": 19744209
+}
