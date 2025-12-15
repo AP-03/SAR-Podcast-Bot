@@ -1,22 +1,25 @@
 """
-GPT-2 Instruction Model - Inference
-====================================
-Use the instruction-tuned model for podcast demo.
+SAR-Podcast-Bot Inference
+=========================
+Run the trained model for the podcast demo.
 
-This matches the Alpaca-style format used in training:
-### Instruction:
-{question}
+Usage:
+    python inference_model.py --demo          # Run full demo
+    python inference_model.py --interactive   # Chat mode
+    python inference_model.py                 # Both
 
-### Response:
-{answer}
+The model was trained on:
+- Your knowledge base (phase_to_control_mapping.json, tool_to_robot_mapping.json)
+- Project-specific Q&A (CNN, LSTM, pipeline)
+- AI literacy questions
 """
 
 import os
 import json
 import torch
 from datetime import datetime
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from pathlib import Path
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 try:
     from peft import PeftModel
@@ -29,50 +32,92 @@ except ImportError:
 # MODEL LOADING
 # =============================================================================
 
-def load_model(model_path, device='cuda'):
-    """Load the instruction-tuned model"""
-    device = torch.device(device if torch.cuda.is_available() else 'cpu')
-    model_path = Path(model_path)
+def load_model(model_path, use_4bit=True):
+    """Load the trained model"""
     
+    model_path = Path(model_path)
     print(f"Loading model from: {model_path}")
     
-    # Check if it's a LoRA adapter
-    adapter_config = model_path / 'adapter_config.json'
+    # Check for LoRA adapter
+    adapter_config_path = model_path / 'adapter_config.json'
     
-    if adapter_config.exists() and PEFT_AVAILABLE:
-        with open(adapter_config) as f:
-            config = json.load(f)
-        base_model = config.get('base_model_name_or_path', 'gpt2')
+    if adapter_config_path.exists():
+        with open(adapter_config_path) as f:
+            adapter_config = json.load(f)
+        base_model_name = adapter_config.get('base_model_name_or_path', 'TinyLlama/TinyLlama-1.1B-Chat-v1.0')
         
-        print(f"Loading LoRA adapter (base: {base_model})")
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
-        model = AutoModelForCausalLM.from_pretrained(base_model)
-        model = PeftModel.from_pretrained(model, str(model_path), local_files_only=True)
+        print(f"Loading LoRA adapter (base: {base_model_name})")
+        
+        tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+        
+        # Load base model
+        if use_4bit:
+            try:
+                bnb_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.float16,
+                )
+                base_model = AutoModelForCausalLM.from_pretrained(
+                    base_model_name,
+                    quantization_config=bnb_config,
+                    device_map="auto",
+                    trust_remote_code=True,
+                )
+            except:
+                print("4-bit failed, using float16")
+                base_model = AutoModelForCausalLM.from_pretrained(
+                    base_model_name,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    trust_remote_code=True,
+                )
+        else:
+            base_model = AutoModelForCausalLM.from_pretrained(
+                base_model_name,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+        
+        # Load adapter
+        model = PeftModel.from_pretrained(base_model, str(model_path), local_files_only=True)
     else:
-        print("Loading full model")
+        # Full model
+        print("Loading full model...")
         tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True)
-        model = AutoModelForCausalLM.from_pretrained(str(model_path), local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            str(model_path),
+            torch_dtype=torch.float16,
+            device_map="auto",
+            local_files_only=True,
+        )
     
-    tokenizer.pad_token = tokenizer.eos_token
-    model = model.to(device)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    
     model.eval()
+    print("✓ Model loaded")
     
-    print(f"✓ Model loaded on {device}")
-    return model, tokenizer, device
+    return model, tokenizer
 
 
 # =============================================================================
 # GENERATION
 # =============================================================================
 
-def generate_response(model, tokenizer, device, question, max_new_tokens=100, temperature=0.7):
-    """Generate response using instruction format"""
+def format_prompt(instruction):
+    """Format for TinyLlama chat"""
+    return f"<|user|>\n{instruction}</s>\n<|assistant|>\n"
+
+
+def generate_response(model, tokenizer, instruction, max_new_tokens=200, temperature=0.7):
+    """Generate a response"""
     
-    # Format as instruction
-    prompt = f"### Instruction:\n{question}\n\n### Response:\n"
+    prompt = format_prompt(instruction)
     
-    inputs = tokenizer(prompt, return_tensors='pt', truncation=True, max_length=200)
-    inputs = {k: v.to(device) for k, v in inputs.items()}
+    inputs = tokenizer(prompt, return_tensors='pt', truncation=True, max_length=300)
+    inputs = {k: v.to(model.device) for k, v in inputs.items()}
     
     with torch.no_grad():
         outputs = model.generate(
@@ -81,23 +126,19 @@ def generate_response(model, tokenizer, device, question, max_new_tokens=100, te
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             top_p=0.9,
-            repetition_penalty=1.2,
+            repetition_penalty=1.15,
             do_sample=True,
             pad_token_id=tokenizer.eos_token_id,
-            eos_token_id=tokenizer.eos_token_id,
         )
     
-    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     
-    # Extract response
-    if "### Response:" in full_text:
-        response = full_text.split("### Response:")[-1].strip()
-    else:
-        response = full_text[len(prompt):].strip()
+    # Extract assistant part
+    if "<|assistant|>" in response:
+        response = response.split("<|assistant|>")[-1].strip()
     
-    # Stop at next instruction
-    if "### Instruction:" in response:
-        response = response.split("### Instruction:")[0].strip()
+    # Clean up
+    response = response.replace("</s>", "").strip()
     
     return response
 
@@ -109,16 +150,16 @@ def generate_response(model, tokenizer, device, question, max_new_tokens=100, te
 class PodcastBot:
     """Interactive podcast bot"""
     
-    def __init__(self, model, tokenizer, device):
+    def __init__(self, model, tokenizer):
         self.model = model
         self.tokenizer = tokenizer
-        self.device = device
         self.history = []
     
-    def ask(self, question):
-        """Get response"""
+    def ask(self, question, temperature=0.7):
+        """Get a response"""
         response = generate_response(
-            self.model, self.tokenizer, self.device, question
+            self.model, self.tokenizer, question,
+            temperature=temperature
         )
         
         self.history.append({
@@ -132,66 +173,109 @@ class PodcastBot:
     def save_history(self, filepath):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.history, f, indent=2, ensure_ascii=False)
-        print(f"Saved to {filepath}")
+        print(f"💾 Saved to {filepath}")
 
+
+# =============================================================================
+# DEMO
+# =============================================================================
 
 def run_demo(bot):
-    """Run podcast demo"""
+    """Run the full podcast demo"""
     
     print("\n" + "=" * 70)
-    print("🎙️ SAR-PODCAST-BOT DEMO")
+    print("🎙️  SAR-PODCAST-BOT DEMO")
     print("=" * 70)
     
-    demo_questions = [
-        # Surgical phases
-        "The vision system detects 'Preparation'. What robotic algorithm applies?",
-        "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
-        "What are the stages of a cholecystectomy?",
-        
-        # AI literacy
-        "How does a computer learn?",
-        "What is deep learning?",
-        "Will AI replace surgeons?",
-        
-        # Conversational
-        "Hello!",
-    ]
+    sections = {
+        "🏥 SURGICAL PHASES": [
+            "The vision system detects 'Preparation'. What robotic algorithm applies here?",
+            "What is the Clipping/Cutting phase?",
+            "List all the surgical phases.",
+        ],
+        "🔧 SURGICAL TOOLS": [
+            "The vision system detects the tool 'Grasper'. What is the robotic equivalent?",
+            "What tools are used in this surgery?",
+        ],
+        "🤖 OUR SYSTEM": [
+            "What is the SAR-Podcast-Bot?",
+            "How does the vision system work?",
+            "What CNN model do you use?",
+            "What is the LSTM used for?",
+        ],
+        "🧠 AI LITERACY": [
+            "How does a computer learn?",
+            "What is deep learning?",
+            "What is a neural network?",
+        ],
+        "⚖️ ETHICS": [
+            "Will AI replace surgeons?",
+            "How do we ensure AI in surgery is safe?",
+        ],
+        "💬 CONVERSATIONAL": [
+            "Hello!",
+            "What can you help with?",
+        ]
+    }
     
-    for q in demo_questions:
-        print(f"\n📝 Q: {q}")
-        response = bot.ask(q)
-        print(f"🤖 A: {response}")
-        print("-" * 50)
+    for section_name, questions in sections.items():
+        print(f"\n{'─' * 70}")
+        print(f"{section_name}")
+        print('─' * 70)
+        
+        for q in questions:
+            print(f"\n🎤 Q: {q}")
+            response = bot.ask(q)
+            print(f"🤖 A: {response}")
+    
+    print("\n" + "=" * 70)
+    print("✅ DEMO COMPLETE")
+    print("=" * 70)
     
     return bot.history
 
 
 def interactive_mode(bot):
-    """Interactive Q&A"""
+    """Interactive chat mode"""
     
     print("\n" + "=" * 60)
     print("🎙️ INTERACTIVE MODE")
-    print("Type your question or /quit to exit")
     print("=" * 60)
+    print("\nCommands:")
+    print("  /demo  - Run full demo")
+    print("  /save  - Save conversation")
+    print("  /quit  - Exit")
+    print("\nOr just type your question!\n")
     
     while True:
         try:
-            q = input("\nYou: ").strip()
-            if not q:
+            user_input = input("You: ").strip()
+            
+            if not user_input:
                 continue
-            if q.lower() in ['/quit', '/exit', '/q', 'quit', 'exit']:
+            
+            # Commands
+            if user_input.lower() in ['/quit', '/exit', '/q', 'quit', 'exit']:
                 break
-            if q == '/demo':
+            
+            if user_input == '/demo':
                 run_demo(bot)
                 continue
             
-            response = bot.ask(q)
-            print(f"\n🤖 Bot: {response}")
+            if user_input == '/save':
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                bot.save_history(f"conversation_{ts}.json")
+                continue
+            
+            # Regular question
+            response = bot.ask(user_input)
+            print(f"\n🤖 Bot: {response}\n")
             
         except KeyboardInterrupt:
+            print("\n")
             break
     
-    print("\nGoodbye! 👋")
+    print("Goodbye! 👋")
 
 
 # =============================================================================
@@ -201,40 +285,50 @@ def interactive_mode(bot):
 def main():
     import argparse
     
-    parser = argparse.ArgumentParser(description="GPT-2 Instruction Model Inference")
+    parser = argparse.ArgumentParser(description="SAR-Podcast-Bot Inference")
     parser.add_argument('--model', type=str, 
-                       default='src/results/gpt2_instruction/best_model',
-                       help='Path to model')
-    parser.add_argument('--device', default='cuda')
-    parser.add_argument('--demo', action='store_true', help='Run demo')
-    parser.add_argument('--interactive', action='store_true', help='Interactive mode')
+                       default='src/results/model_final/best_model',
+                       help='Path to trained model')
+    parser.add_argument('--demo', action='store_true', help='Run demo only')
+    parser.add_argument('--interactive', action='store_true', help='Interactive mode only')
+    parser.add_argument('--no-4bit', action='store_true', help='Disable 4-bit quantization')
     
     args = parser.parse_args()
     
     print("\n" + "=" * 70)
-    print("SAR-PODCAST-BOT - Instruction-Tuned GPT-2")
+    print("🏥 SAR-PODCAST-BOT")
+    print("Surgical Robotics + AI Education")
     print("=" * 70)
     
     # Find model
-    if not os.path.exists(args.model):
-        # Try common locations
-        alternatives = [
-            'src/results/gpt2_instruction/best_model',
-            'results/gpt2_instruction/best_model',
-            '../results/gpt2_instruction/best_model',
-        ]
-        for alt in alternatives:
-            if os.path.exists(alt):
-                args.model = alt
-                break
-        else:
-            print(f"❌ Model not found: {args.model}")
-            print("Train first with: python train_gpt2_clean.py")
-            return
+    search_paths = [
+        args.model,
+        'src/results/model_final/best_model',
+        'results/model_final/best_model',
+        '../results/model_final/best_model',
+        'src/results/tinyllama_surgical/best_model',
+        'results/tinyllama_surgical/best_model',
+    ]
     
-    model, tokenizer, device = load_model(args.model, args.device)
-    bot = PodcastBot(model, tokenizer, device)
+    model_path = None
+    for p in search_paths:
+        if os.path.exists(p):
+            model_path = p
+            break
     
+    if not model_path:
+        print("❌ Model not found!")
+        print("\nSearched in:")
+        for p in search_paths:
+            print(f"  - {p}")
+        print("\nTrain first with: python train_model.py")
+        return
+    
+    # Load model
+    model, tokenizer = load_model(model_path, use_4bit=not args.no_4bit)
+    bot = PodcastBot(model, tokenizer)
+    
+    # Run
     if args.demo:
         run_demo(bot)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -242,11 +336,19 @@ def main():
     elif args.interactive:
         interactive_mode(bot)
     else:
-        # Default: run demo then interactive
+        # Default: demo then interactive
         run_demo(bot)
-        interactive_mode(bot)
+        
+        try:
+            print("\n")
+            cont = input("Continue to interactive mode? (y/n): ").lower().strip()
+            if cont == 'y':
+                interactive_mode(bot)
+        except:
+            pass
     
-    if bot.history:
+    # Save offer
+    if bot.history and not args.demo:
         try:
             save = input("\nSave conversation? (y/n): ").lower().strip()
             if save == 'y':
