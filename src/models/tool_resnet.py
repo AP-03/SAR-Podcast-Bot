@@ -65,9 +65,7 @@ class ToolCNN(nn.Module):
         nn.init.uniform_(self.stage_head.weight, a=0.0, b=ini_fc)
         nn.init.constant_(self.stage_head.bias, ini_bias)
 
-    # ------------------------------------------------------
-    # Forward
-    # ------------------------------------------------------
+
     def forward(self, x, return_features: bool = False):
         """
         x: [B, 3, H, W] batch of RGB frames.

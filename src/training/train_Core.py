@@ -1,21 +1,6 @@
 """
 GPT-2 Fine-Tuning for Surgical Robotics Knowledge
 ==================================================
-Clean implementation following best practices:
-
-1. NO DailyDialog - domain knowledge only
-2. Alpaca-style instruction format
-3. Generate lots of variations from knowledge base
-4. Simple, proven training approach
-
-This is what your friend likely did with Wikipedia.
-
-Format:
-### Instruction:
-{question}
-
-### Response:
-{answer}
 """
 
 import json
@@ -36,10 +21,6 @@ except ImportError:
     PEFT_AVAILABLE = False
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-# =============================================================================
-# INSTRUCTION FORMAT (Alpaca-style - proven to work)
-# =============================================================================
 
 INSTRUCTION_TEMPLATE = """### Instruction:
 {instruction}

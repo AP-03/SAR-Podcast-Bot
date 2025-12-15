@@ -15,7 +15,7 @@ import random
 from pathlib import Path
 
 # =============================================================================
-# PHASE KNOWLEDGE BASE (Enhanced)
+# PHASE KNOWLEDGE BASE
 # =============================================================================
 
 PHASE_KNOWLEDGE = {

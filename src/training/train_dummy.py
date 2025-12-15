@@ -1,9 +1,3 @@
-"""
-Dummy LSTM Training - ULTRA MEMORY EFFICIENT
-=============================================
-For GPUs with 8GB or less VRAM.
-"""
-
 import json
 import os
 import sys
@@ -17,34 +11,29 @@ import gc
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-# ========================================
-# FORCE MEMORY CLEANUP
-# ========================================
 def clear_memory():
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
 
-# ========================================
-# CONFIGURATION - ULTRA LOW MEMORY
-# ========================================
+
 config = {
-    'max_length': 64,          # REDUCED from 128
-    'batch_size': 1,           # MINIMUM
-    'gradient_accumulation': 8, # Effective batch = 8
+    'max_length': 64,        
+    'batch_size': 1,         
+    'gradient_accumulation': 8, 
     'learning_rate': 0.01,
     'num_epochs': 10,
-    'embed_dim': 128,          # REDUCED from 256
-    'hidden_dim': 256,         # REDUCED from 512
-    'num_layers': 1,           # REDUCED from 2
+    'embed_dim': 128,         
+    'hidden_dim': 256,       
+    'num_layers': 1,        
     'dropout': 0.3,
-    'max_dialog_samples': 2000, # REDUCED from 5000
+    'max_dialog_samples': 2000, 
     'robot_train_split': 0.7,
 }
 
 print("=" * 60)
-print("DUMMY LSTM TRAINING (Ultra Low Memory)")
+print("DUMMY LSTM TRAINING")
 print("=" * 60)
 print(f"Max length: {config['max_length']}")
 print(f"Batch size: {config['batch_size']}")
@@ -68,9 +57,7 @@ from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
-# ========================================
-# SMALLER MODEL
-# ========================================
+
 class TinyLSTM(nn.Module):
     """Tiny LSTM for low memory"""
     def __init__(self, vocab_size, embed_dim=128, hidden_dim=256, num_layers=1, dropout=0.3, pad_token_id=None):

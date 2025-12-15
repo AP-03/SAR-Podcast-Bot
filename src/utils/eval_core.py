@@ -245,7 +245,7 @@ print(f"\nBatch configuration:")
 print(f"  Batch size: {config['batch_size']}")
 print(f"  Validation batches: {len(val_loader)}")
 
-# ----------------- Evaluation metrics (same as bottom of train_Core.py) ----- #
+# ----------------- Evaluation metrics ----- #
 
 def calculate_distinct_n(texts, n):
     all_ngrams = []

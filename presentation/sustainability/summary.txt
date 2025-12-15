@@ -1,0 +1,76 @@
+============================================================
+SAR-Podcast-Bot Sustainability Summary
+============================================================
+
+Methodology: Coffee Cup Equivalent (CCE)
+  GPU: NVIDIA RTX 3070 (220W TDP, ~80% utilization)
+  Grid: UK average 0.233 kg CO2/kWh
+  1 Coffee Cup = 0.021 kg CO2
+
+============================================================
+TRAINING ENERGY BREAKDOWN
+============================================================
+
+Vision Models:
+  ToolCNN (ResNet-50):
+    Training Time:     12.0 hours
+    Energy:            2.223 kWh
+    CO2:               0.492 kg
+    Coffee Cups:       24 ☕
+
+  ActionLSTM:
+    Training Time:     2.0 hour
+    Energy:            0.352 kWh
+    CO2:               0.082 kg
+    Coffee Cups:       2 ☕
+
+Dialogue Models:
+  Dummy LSTM:
+    Training Time:     1 hour
+    Energy:            0.174 kWh
+    CO2:               0.042 kg
+    Coffee Cups:       1 ☕
+
+  Core TinyLlama (LoRA):
+    Training Time:     6 hours
+    Energy:            1.1115 kWh
+    CO2:               0.246 kg
+    Coffee Cups:       12 ☕
+
+  SOTA GPT-4o:
+    Training Time:     0 (API-based)
+    Note:              Hidden datacenter costs not measured
+
+============================================================
+TOTALS
+============================================================
+
+  Total Training Time:   ~21 hours
+  Total Energy:          4.1244 kWh
+  Total CO2:             0.9618 kg
+  Total Coffee Cups:     ~39 ☕
+
+============================================================
+COMPARISONS
+============================================================
+
+  Our Project       =  39 coffee cups
+                    =  ~325 smartphone charges
+                    =  ~9.75 hours Netflix streaming
+                    =  ~3.25 km car driving
+
+  GPT-3 Training    =  ~2 million × our project
+
+============================================================
+KEY INSIGHTS
+============================================================
+
+  1. Transfer Learning Savings:
+     Fine-tuning: 12 ☕  vs  From scratch: 10,000+ ☕
+     → 99.99% energy reduction
+
+  2. Right-Sizing:
+     Our 1.1B model beats GPT-4o on domain hallucination
+        175B < 1B
+
+============================================================

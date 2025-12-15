@@ -241,19 +241,7 @@ class ActionPredictor:
         return model
     
     def predict_sequence(self, features, window_size=16, stride=8):
-        """
-        Predict actions from feature sequence using sliding window
-        
-        Args:
-            features: numpy array of shape [num_frames, feature_dim]
-            window_size: Number of frames to process at once
-            stride: Number of frames to slide between windows
-            
-        Returns:
-            predictions: List of predicted actions per window
-            confidences: List of confidence scores per window
-            attention_weights: List of attention weights per window
-        """
+
         print(f"\nPredicting actions from {len(features)} feature vectors...")
         print(f"Window size: {window_size}, Stride: {stride}")
         
@@ -437,12 +425,11 @@ def listen_to_speech(timeout=5, phrase_time_limit=10):
         result = listen_to_speech.whisper_model.transcribe(
             temp_path, 
             language='english',
-            fp16=False,  # Use FP32 on CPU
-            verbose=False  # Suppress warnings
+            fp16=False, 
+            verbose=False 
         )
         text = result['text'].strip()
         
-        # Clean up temp file
         import os
         os.unlink(temp_path)
         
@@ -528,16 +515,16 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
         if lstm_info:
             context_parts.append(f"LSTM: {lstm_info.get('model_name', 'ActionLSTMWithAttention')} with attention mechanism")
         
-        # Add language model info - IMPORTANT: Tell bot which model it's currently using
+        # Add language model info
         lm_info = system_knowledge.get('language_models', {})
         context_parts.append(f"Language models available: {', '.join(lm_info.keys())}")
         context_parts.append(f"CURRENTLY ACTIVE LANGUAGE MODEL: {generator.model_type}")
         
-        # Add details about the active model
+        # active models
         if generator.model_type == 'sota':
             context_parts.append("I am currently using GPT-4o (SOTA model) via OpenAI API")
         elif generator.model_type == 'core':
-            context_parts.append("I am currently using fine-tuned GPT-2 (Core model) with LoRA")
+            context_parts.append("I am currently using fine-tuned LLama (Core model) with LoRA")
         elif generator.model_type == 'dummy':
             context_parts.append("I am currently using Dummy LSTM (baseline model)")
     
@@ -636,7 +623,7 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
                 elif cmd.startswith('phase '):
                     # /phase <phase_name> - Show tools for specific phase
                     phase_name = cmd[6:].strip()
-                    # Try to find matching phase (case-insensitive partial match)
+                    # Try to find matching phase
                     matching_phases = [p for p in phase_summary.keys() if phase_name.lower() in p.lower()]
                     
                     if matching_phases:
@@ -754,7 +741,7 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
             
             # Speak response if TTS is enabled
             if enable_tts:
-                # Select voice based on model type (distinct voices for easy differentiation)
+                # Select voice based on model type
                 voice_map = {
                     'dummy': 'Alex',        # Alex - male US voice (clear, neutral)
                     'core': 'Samantha',     # Samantha - female US voice (warm, natural)
@@ -836,7 +823,7 @@ def main():
     print("SAR-PODCAST-BOT PIPELINE")
     print("="*60)
     
-    # Check if we should skip vision processing
+    #skip vision processing
     if args.load_npz:
         print("\n📂 Loading pre-computed results from NPZ file...")
         print(f"   File: {args.load_npz}")

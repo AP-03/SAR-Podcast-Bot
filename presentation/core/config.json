@@ -1,0 +1,15 @@
+{
+  "model_name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "use_4bit": false,
+  "max_length": 512,
+  "batch_size": 4,
+  "gradient_accumulation": 8,
+  "learning_rate": 0.0002,
+  "epochs": 10,
+  "warmup_ratio": 0.1,
+  "lora_r": 32,
+  "lora_alpha": 64,
+  "lora_dropout": 0.05,
+  "upsample_factor": 8,
+  "output_dir": "results/model_final"
+}

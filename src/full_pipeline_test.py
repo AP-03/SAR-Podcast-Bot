@@ -49,13 +49,7 @@ class SustainabilityTracker:
     """
     
     def __init__(self, gpu_tdp_watts=220, carbon_intensity_gco2_kwh=400):
-        """
-        Initialize sustainability tracker
-        
-        Args:
-            gpu_tdp_watts: GPU Thermal Design Power (RTX 3070 Laptop ≈ 115-140W)
-            carbon_intensity_gco2_kwh: Grid carbon intensity (UK average ≈ 200-250 gCO2/kWh)
-        """
+
         self.gpu_tdp_watts = gpu_tdp_watts
         self.carbon_intensity = carbon_intensity_gco2_kwh
         
@@ -65,9 +59,9 @@ class SustainabilityTracker:
         
         # Model FLOP estimates (approximate)
         self.model_flops = {
-            'resnet50_cnn': 4.1e9,      # ~4.1 GFLOPs per forward pass
-            'lstm_attention': 50e6,      # ~50 MFLOPs per sequence
-            'gpt2_small': 1.5e9,         # ~1.5 GFLOPs per token generated
+            'resnet50_cnn': 4.1e9,    
+            'lstm_attention': 50e6,      
+            'gpt2_small': 1.5e9,     
         }
         
     def start_timer(self, component_name):
@@ -96,8 +90,7 @@ class SustainabilityTracker:
             t.get('elapsed', 0) for t in self.timings.values()
         )
         
-        # Energy = Power × Time
-        # Assuming GPU runs at ~70% of TDP during inference
+
         effective_power_watts = self.gpu_tdp_watts * 0.7
         energy_kwh = (effective_power_watts * total_time_seconds) / 3600 / 1000
         
@@ -252,7 +245,7 @@ def simulate_pipeline_test(tracker):
 
 
 # =============================================================================
-# REAL PIPELINE TEST (when video is available)
+# REAL PIPELINE TEST
 # =============================================================================
 
 def run_real_pipeline(video_path, cnn_model_path, lstm_model_path, gpt_model_path, 

@@ -14,7 +14,7 @@ except ImportError:
 tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
 base_model = AutoModelForCausalLM.from_pretrained("openai-community/gpt2")
 
-# Set pad token (GPT-2 doesn't have one by default)
+# Set pad token
 tokenizer.pad_token = tokenizer.eos_token
 base_model.config.pad_token_id = tokenizer.eos_token_id
 
@@ -23,10 +23,10 @@ if PEFT_AVAILABLE:
     print("✓ Applying LoRA (Low-Rank Adaptation)...")
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=8,  # Rank of the low-rank matrices
-        lora_alpha=32,  # Scaling factor
-        lora_dropout=0.1,  # Dropout for LoRA layers
-        target_modules=["c_attn", "c_proj"],  # Apply to attention layers
+        r=8,  
+        lora_alpha=32,  
+        lora_dropout=0.1,  
+        target_modules=["c_attn", "c_proj"],  
         bias="none",
     )
     model = get_peft_model(base_model, lora_config)
@@ -40,7 +40,7 @@ else:
     model = base_model
     print("  Using full fine-tuning (all parameters trainable)")
 
-# Move model to appropriate device
+# Move model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 print(f"Model loaded on: {device}")

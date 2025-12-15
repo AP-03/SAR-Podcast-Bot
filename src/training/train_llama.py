@@ -1,11 +1,11 @@
 """
-TinyLlama Fine-Tuning for SAR-Podcast-Bot
+TinyLlama
 ==========================================
-READS FROM YOUR ACTUAL KNOWLEDGE BASE FILES:
+READ FROM KNOWLEDGE BASE:
 - src/dataset/Surgical_Robotics/phase_to_control_mapping.json
 - src/dataset/Surgical_Robotics/tool_to_robot_mapping.json
 
-Also includes project-specific Q&A about:
+Q&A on:
 - Your CNN (ResNet-50) for tool/phase detection
 - Your LSTM for temporal smoothing
 - Your full vision pipeline
@@ -44,7 +44,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # =============================================================================
 
 CONFIG = {
-    # Model - TinyLlama works on 8GB VRAM
+
     'model_name': 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
     
     # Set to False if you have issues with bitsandbytes on Windows
@@ -64,16 +64,13 @@ CONFIG = {
     'lora_dropout': 0.05,
     
     # Data
-    'upsample_factor': 8,  # Repeat examples for more training
+    'upsample_factor': 8,
     
     # Output
     'output_dir': 'results/model_final',
 }
 
 
-# =============================================================================
-# PROJECT-SPECIFIC KNOWLEDGE (Your actual system!)
-# =============================================================================
 
 PROJECT_KNOWLEDGE = {
     "system_overview": {
@@ -193,11 +190,10 @@ CONVERSATIONAL = {
 
 
 # =============================================================================
-# LOAD KNOWLEDGE BASE FROM JSON FILES
+# LOAD KNOWLEDGE BASE
 # =============================================================================
 
 def load_knowledge_base(src_dir):
-    """Load the actual JSON knowledge base files from the repo"""
     
     phase_path = src_dir / 'dataset' / 'Surgical_Robotics' / 'phase_to_control_mapping.json'
     tool_path = src_dir / 'dataset' / 'Surgical_Robotics' / 'tool_to_robot_mapping.json'

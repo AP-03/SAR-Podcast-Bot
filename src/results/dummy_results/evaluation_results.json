@@ -1,0 +1,36 @@
+{
+  "dialog": {
+    "avg_bleu": 0.23664050257043193,
+    "distinct_1": 0.12658700522778193,
+    "distinct_2": 0.4606164383561644,
+    "avg_hallucination_rate": 0.11699999999999999,
+    "avg_latency_sec": 0.11765369653701782,
+    "min_latency_sec": 0.05051589012145996,
+    "max_latency_sec": 0.2758216857910156,
+    "num_samples": 100
+  },
+  "robotics": {
+    "avg_bleu": 0.26679474929582464,
+    "distinct_1": 0.14213340838727836,
+    "distinct_2": 0.4992863260062803,
+    "avg_hallucination_rate": 0.029999999999999995,
+    "avg_latency_sec": 0.17219141483306885,
+    "min_latency_sec": 0.16369938850402832,
+    "max_latency_sec": 0.2062211036682129,
+    "num_samples": 50
+  },
+  "sample_outputs": [
+    {
+      "prompt": "Hello, how are you?",
+      "response": ". you . . neighborhood . I robotic do to . I I robotic I on the a I the have the , I, for . I I ? I ?? the the you ** .'. the. is. .? Clan . I algorithm is is for. **"
+    },
+    {
+      "prompt": "The vision system detects 'Preparation'. What robotic algorithm applies?",
+      "response": "I agrees the. you ** the the . , The abl ? the . for is . on ? .****. the the to. the ( robot ,bl's. would a**. robotic . are .?."
+    },
+    {
+      "prompt": "How does a computer learn?",
+      "response": "The I . surgeon algorithm **'s to'. the you Calm-.bl to a,** robotic . .** you. .set you ? this ..blsection .) ? key. the . . I I** . . .authors. the I. uses"
+    }
+  ]
+}

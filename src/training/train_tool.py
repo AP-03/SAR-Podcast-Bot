@@ -117,7 +117,7 @@ def train_tools(train_csv, val_csv, epochs=27, batch_size=1, lr=5e-5, device="cu
         for batch in pbar:
             imgs = batch['image'].to(device)
             tool_targets  = batch['tools'].to(device)
-            # CHANGE 'phase' here if your dataset uses a different key name
+
             stage_targets = batch['phase'].to(device).long()
 
             tool_logits, stage_logits = model(imgs)

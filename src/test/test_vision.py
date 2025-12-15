@@ -241,17 +241,7 @@ def process_lstm(features, model, device, window_size=16, stride=8):
 
 
 def evaluate_predictions(ground_truth, predictions, model_name):
-    """
-    Calculate evaluation metrics
     
-    Args:
-        ground_truth: List of true labels
-        predictions: List of predicted labels
-        model_name: Name for printing (e.g., "CNN", "LSTM")
-    
-    Returns:
-        Dictionary of metrics
-    """
     print(f"  Ground truth length: {len(ground_truth)}")
     print(f"  Predictions length: {len(predictions)}")
     

@@ -1,0 +1,23 @@
+============================================================
+Dummy LSTM Model Evaluation Summary
+============================================================
+
+DailyDialog Results:
+  BLEU Score:          0.2366
+  BERTScore F1:        N/A
+  Hallucination Rate:  0.1170
+  Distinct-1:          0.1266
+  Distinct-2:          0.4606
+  Avg Latency:         0.118s
+  Samples:             100
+
+Surgical Robotics Results:
+  BLEU Score:          0.2668
+  BERTScore F1:        N/A
+  Hallucination Rate:  0.0300
+  Distinct-1:          0.1421
+  Distinct-2:          0.4993
+  Avg Latency:         0.172s
+  Samples:             50
+
+Note: Poor results expected - this is a from-scratch baseline!
