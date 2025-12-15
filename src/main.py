@@ -3,6 +3,7 @@ Main pipeline for SAR-Podcast-Bot
 Processes surgical videos through trained models to generate podcast content
 """
 import os
+import re
 import sys
 import torch
 import cv2
@@ -483,6 +484,10 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
         phase_summary[phase]['duration'] += seg['duration']
         phase_summary[phase]['tools'].update(seg['tools'])
         phase_summary[phase]['count'] += 1
+    phase_to_tools = {p: sorted(info['tools']) for p, info in phase_summary.items()}
+    detected_phases = list(phase_to_tools.keys())
+    detected_tools = sorted({t for ts in phase_to_tools.values() for t in ts})
+
     
     # Build context string with phase-to-tools mapping
     context_parts = [f"Video: {video_name}"]
@@ -493,6 +498,7 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
         tools_str = ', '.join(sorted(info['tools'])) if info['tools'] else 'None'
         context_parts.append(f"  {phase}: {tools_str}")
     
+    video_facts_context = "\n".join(context_parts)
     # Add system self-awareness
     if system_knowledge:
         context_parts.append("\n=== SYSTEM INFORMATION ===")
@@ -712,7 +718,12 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
             
             # Generate response with video context
             # Add context to question for better responses
-            contextual_question = f"Context: {video_context}\n\nQuestion: {question}"
+            contextual_question = (
+            "Use the CONTEXT to answer the QUESTION. "
+            "Do NOT repeat the context. Answer clearly.\n\n"
+            f"CONTEXT:\n{video_context}\n\nQUESTION:\n{question}\n\nANSWER:"
+            )
+
             
             response = generator.generate_response(contextual_question, max_length=300, temperature=0.7)
             
@@ -784,7 +795,7 @@ def main():
     parser.add_argument('--interactive-qa', action='store_true',
                        help='Start interactive Q&A session after processing')
     parser.add_argument('--model-type', type=str, default='core',
-                       choices=['dummy', 'core', 'sota'],
+                       choices=['dummy', 'core', 'llama', 'sota'],
                        help='Language model to use for Q&A')
     parser.add_argument('--lm-model-path', type=str,
                        default='src/results/core_results/gpt2_best_model_intial',

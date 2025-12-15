@@ -28,7 +28,76 @@ sys.path.insert(0, script_dir)
 sys.path.insert(0, os.path.join(script_dir, 'src'))
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
+try:
+    from transformers import BitsAndBytesConfig
+except Exception:
+    BitsAndBytesConfig = None
 
+try:
+    from peft import PeftModel
+    PEFT_AVAILABLE = True
+except Exception:
+    PEFT_AVAILABLE = False
+
+
+
+
+def _llama_format_prompt(instruction: str) -> str:
+    return f"<|user|>\n{instruction}</s>\n<|assistant|>\n"
+
+
+def _load_llama_model(model_path: str, use_4bit: bool = True):
+    # basically inference.py: load_model(...) 
+    model_path = Path(model_path)
+    adapter_config_path = model_path / "adapter_config.json"
+
+    if adapter_config_path.exists():
+        if not PEFT_AVAILABLE:
+            raise RuntimeError("peft not installed but adapter_config.json found. pip install peft")
+
+        with open(adapter_config_path, "r") as f:
+            adapter_config = json.load(f)
+
+        base_model_name = adapter_config.get(
+            "base_model_name_or_path",
+            "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+        )
+
+        tokenizer = AutoTokenizer.from_pretrained(base_model_name)
+
+        # 4-bit optional
+        quant_config = None
+        if use_4bit and BitsAndBytesConfig is not None:
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+
+        base_model = AutoModelForCausalLM.from_pretrained(
+            base_model_name,
+            device_map="auto",
+            torch_dtype=torch.float16,
+            trust_remote_code=True,
+            quantization_config=quant_config,
+        )
+
+        model = PeftModel.from_pretrained(base_model, str(model_path), local_files_only=True)
+
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            str(model_path),
+            device_map="auto",
+            torch_dtype=torch.float16,
+            local_files_only=True,
+        )
+
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    model.eval()
+    return model, tokenizer
 
 # =============================================================================
 # CONFIGURATION & MAPPINGS
@@ -183,6 +252,11 @@ class NarrationGenerator:
             self.model = AutoModelForCausalLM.from_pretrained(model_path).to(self.device)
             self.model.eval()
             print("Core GPT-2 model loaded successfully!")
+        
+        elif model_type == 'llama':
+            print(f"Loading Llama HF model from: {model_path}")
+            self.model, self.tokenizer = _load_llama_model(model_path, use_4bit=True)
+            print("Llama model loaded successfully!")
             
         elif model_type == 'sota':
             # Use SOTA GPT-4o via OpenAI API
@@ -197,43 +271,63 @@ class NarrationGenerator:
             raise ValueError(f"Unknown model type: {model_type}. Choose 'dummy', 'core', or 'sota'.")
         
     def generate_response(self, prompt, max_length=200, temperature=0.7):
-        """Generate a response using the selected model"""
-        
+        # 1) SOTA (API) path
         if self.model_type == 'sota':
-            # Use SOTA API
-            response = self.query_gpt(
+            return self.query_gpt(
                 prompt,
                 temperature=temperature,
                 max_tokens=max_length
             )
-            return response
-        
+
+        # 2) Local model paths (llama or core/dummy)
+        if self.model_type == 'llama':
+            full_prompt = _llama_format_prompt(prompt)
+
+            # Use a larger truncation window so your Context isn't chopped
+            max_ctx = getattr(self.tokenizer, "model_max_length", 2048)
+            if max_ctx is None or max_ctx > 100000:
+                max_ctx = 2048
+
+            inputs = self.tokenizer(
+                full_prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=min(2048, max_ctx),
+            )
+
+            # If you loaded llama with device_map="auto", use model.device
+            inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
         else:
-            # Use local model (dummy or core)
-            inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+            # core_gpt2 / dummy etc. (these likely live on self.device)
+            inputs = self.tokenizer(
+                prompt,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+            )
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
-            with torch.no_grad():
-                outputs = self.model.generate(
-                    inputs['input_ids'],
-                    attention_mask=inputs.get('attention_mask'),
-                    max_length=max_length,
-                    temperature=temperature,
-                    top_p=0.9,
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    num_return_sequences=1
-                )
-            
-            full_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            
-            # Extract only the generated part (after prompt)
-            if full_text.startswith(prompt):
-                response = full_text[len(prompt):].strip()
-            else:
-                response = full_text.strip()
-                
-            return response
+
+        input_len = inputs["input_ids"].shape[1]
+
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_length,      # <-- key fix (NOT max_length)
+                temperature=temperature,
+                top_p=0.9,
+                repetition_penalty=1.15 if self.model_type == "llama" else 1.0,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+
+        # Decode only the newly generated tokens (prevents echoing the prompt)
+        gen_ids = outputs[0][input_len:]
+        response = self.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+
+        # Optional cleanup if your llama outputs stray tokens
+        response = response.replace("</s>", "").strip()
+        return response
+
 
 
 class VisionResultsLoader:
