@@ -1,21 +1,43 @@
 {
-  "add_prefix_space": false,
+  "add_bos_token": true,
+  "add_eos_token": false,
+  "add_prefix_space": null,
   "added_tokens_decoder": {
-    "50256": {
-      "content": "<|endoftext|>",
+    "0": {
+      "content": "<unk>",
       "lstrip": false,
-      "normalized": true,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "1": {
+      "content": "<s>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "2": {
+      "content": "</s>",
+      "lstrip": false,
+      "normalized": false,
       "rstrip": false,
       "single_word": false,
       "special": true
     }
   },
-  "bos_token": "<|endoftext|>",
+  "bos_token": "<s>",
   "clean_up_tokenization_spaces": false,
-  "eos_token": "<|endoftext|>",
+  "eos_token": "</s>",
   "extra_special_tokens": {},
-  "model_max_length": 1024,
-  "pad_token": "<|endoftext|>",
-  "tokenizer_class": "GPT2Tokenizer",
-  "unk_token": "<|endoftext|>"
+  "legacy": false,
+  "model_max_length": 2048,
+  "pad_token": "</s>",
+  "padding_side": "right",
+  "sp_model_kwargs": {},
+  "tokenizer_class": "LlamaTokenizer",
+  "unk_token": "<unk>",
+  "use_default_system_prompt": false
 }

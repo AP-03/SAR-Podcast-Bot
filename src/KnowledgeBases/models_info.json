@@ -232,7 +232,8 @@
         "features": {
             "context_awareness": "Bot receives full video analysis context including phase-to-tools mapping",
             "conversation_history": "Maintains conversation log with timestamps",
-            "text_to_speech": "macOS 'say' command for bot voice (optional)",
+            "text_to_speech": "pyttsx3 library for cross-platform voice output (Windows, macOS) with model-specific voices",
+            "voice_input": "OpenAI Whisper for speech-to-text transcription (toggle with /voice command)",
             "commands": [
                 "/summary - Show video summary",
                 "/phases - List all detected phases",

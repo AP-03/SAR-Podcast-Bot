@@ -1,0 +1,24 @@
+{
+  "video": "test_workflow_video_12",
+  "context": "Video: test_workflow_video_12\nTotal duration: 2451.0s\nPhases detected: Preparation, CalotTriangleDissection, GallbladderDissection, ClippingCutting, CleaningCoagulation, GallbladderPackaging, GallbladderRetraction\n\nPhase-to-Tools Mapping:\n  Preparation: Bipolar, Grasper, Irrigator, SpecimenBag\n  CalotTriangleDissection: Grasper, Hook, Irrigator\n  GallbladderDissection: Bipolar, Clipper, Grasper, Hook, Irrigator\n  ClippingCutting: Clipper, Grasper, Scissors\n  CleaningCoagulation: Bipolar, Grasper, Irrigator, SpecimenBag\n  GallbladderPackaging: Bipolar, Clipper, Grasper, Irrigator, SpecimenBag\n  GallbladderRetraction: Grasper, Irrigator, SpecimenBag\n\n=== SYSTEM INFORMATION ===\nI am SAR-Podcast-Bot, an AI assistant for surgical robotics education\nI analyze surgical videos and explain robotic concepts",
+  "conversation": [
+    {
+      "timestamp": "2025-12-15T19:03:01.612528",
+      "question": "Explain control theory behind gold blather dissection.",
+      "response": "? I and , . of . the a. the on . for . The robotic . a . the is you I the. in robotic you? ., to the algorithm ( . robotic you ? robot ' ( . . the . I robot . robotic I, the robotic . are** . . on this . the a is robotic the robotic . I the. the to the** to, the ** to . the the a ** ** is ** and ? is the to the . robot ? **",
+      "model": "dummy"
+    },
+    {
+      "timestamp": "2025-12-15T19:03:28.169615",
+      "question": "Impses of words that are relevant. Hi, how are you?",
+      "response": "..** . in I the robotic for the a . of . I for to ' the ' the** robotic The ? robotic algorithm ? the, robotic the robotic is to the in the . ? it the . I the ? I's are to to a on the . a you the is ? the. is **. the robot robotic ? robot ... ? the. and the . a , robotic. it.. is ? ?, the ? , ? ( is the is a The",
+      "model": "dummy"
+    },
+    {
+      "timestamp": "2025-12-15T19:03:50.247704",
+      "question": "to the more impressive models.",
+      "response": ", for . . I robotic. a the on algorithm ' a the to robot, to the robot . I the. .adder is'. . for . the ? to I the ., for the . . . Ibl the robot robot I . . . The? . robotic robot a for is ( to ? . . ? to , ?. robot in ** the robotic on? , . ?) this to. The The algorithm on the the robotic on .? . robotic ** The ( you",
+      "model": "dummy"
+    }
+  ]
+}
