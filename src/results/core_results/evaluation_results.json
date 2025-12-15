@@ -1,0 +1,28 @@
+{
+  "dialog": {
+    "avg_bleu": 0.09061164019810981,
+    "distinct_1": 0.35073292813728996,
+    "distinct_2": 0.6955876900259548,
+    "bert_precision": 0.8331835269927979,
+    "bert_recall": 0.8230729699134827,
+    "bert_f1": 0.8277762532234192,
+    "avg_hallucination_rate": 0.11800000000000001,
+    "avg_latency_sec": 11.310236895084381,
+    "min_latency_sec": 2.3540570735931396,
+    "max_latency_sec": 47.22532796859741,
+    "num_samples": 100
+  },
+  "robotics": {
+    "avg_bleu": 0.7532387922625975,
+    "distinct_1": 0.1851040525739321,
+    "distinct_2": 0.32150900900900903,
+    "bert_precision": 0.9485852122306824,
+    "bert_recall": 0.9506440758705139,
+    "bert_f1": 0.9494467377662659,
+    "avg_hallucination_rate": 0.042,
+    "avg_latency_sec": 13.575193114280701,
+    "min_latency_sec": 6.685957908630371,
+    "max_latency_sec": 21.994926929473877,
+    "num_samples": 50
+  }
+}

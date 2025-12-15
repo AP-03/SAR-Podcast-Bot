@@ -339,32 +339,45 @@ class ActionPredictor:
         return frame_predictions, frame_confidences
 
 
-def speak_text(text, voice="Samantha", rate=175):
+def speak_text(text, rate=190, voice_name=None):
     """
-    Convert text to speech using macOS 'say' command
+    Convert text to speech using pyttsx3 (cross-platform)
     
     Args:
         text: Text to speak
-        voice: Voice to use (default: Samantha)
-        rate: Speaking rate in words per minute (default: 175)
+        rate: Speaking rate in words per minute (default: 150)
+        voice_name: Preferred voice name (e.g., 'Samantha', 'Alex') - None for default
+    
+    Note:
+        Install pyttsx3: pip install pyttsx3
+        Works on Windows and macOS
     """
-    import subprocess
-    import platform
-    
-    # Only works on macOS
-    if platform.system() != "Darwin":
-        return
-    
     try:
-        # Use macOS 'say' command
-        subprocess.run(
-            ['say', '-v', voice, '-r', str(rate), text],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        import pyttsx3
+        
+        # Initialize TTS engine
+        engine = pyttsx3.init()
+        
+        # Set speaking rate
+        engine.setProperty('rate', rate)
+        
+        # Set voice if specified
+        if voice_name:
+            voices = engine.getProperty('voices')
+            # Try to find voice by name (case-insensitive partial match)
+            for voice in voices:
+                if voice_name.lower() in voice.name.lower():
+                    engine.setProperty('voice', voice.id)
+                    break
+        
+        # Speak the text
+        engine.say(text)
+        engine.runAndWait()
+        
+    except ImportError:
+        print("⚠️  pyttsx3 not installed. Install with: pip install pyttsx3")
     except Exception as e:
-        print(f"  (TTS error: {e})")
+        print(f"TTS Error: {e}")
 
 
 def listen_to_speech(timeout=5, phrase_time_limit=10):
@@ -741,7 +754,15 @@ def interactive_qa_session(generator, segments, video_name, enable_tts=False, en
             
             # Speak response if TTS is enabled
             if enable_tts:
-                speak_text(response)
+                # Select voice based on model type (distinct voices for easy differentiation)
+                voice_map = {
+                    'dummy': 'Alex',        # Alex - male US voice (clear, neutral)
+                    'core': 'Samantha',     # Samantha - female US voice (warm, natural)
+                    'llama': 'Samantha',    # Samantha - same as core
+                    'sota': 'Daniel'        # Daniel - male UK voice (British accent, professional)
+                }
+                voice_name = voice_map.get(generator.model_type, None)
+                speak_text(response, voice_name=voice_name)
             
         except KeyboardInterrupt:
             print("\n\n👋 Session interrupted. Goodbye!")
@@ -798,7 +819,7 @@ def main():
                        choices=['dummy', 'core', 'llama', 'sota'],
                        help='Language model to use for Q&A')
     parser.add_argument('--lm-model-path', type=str,
-                       default='src/results/core_results/gpt2_best_model_intial',
+                       default='results/core_results/best_model',
                        help='Path to language model (for core/dummy)')
     parser.add_argument('--enable-tts', action='store_true',
                        help='Enable text-to-speech for bot responses (macOS only)')
@@ -945,8 +966,17 @@ def main():
         
         # Initialize narration generator with selected model
         print(f"Initializing {args.model_type} model...")
+        
+        # Determine model path based on model type
+        if args.model_type == 'dummy':
+            model_path = 'results/dummy_results/best_model'
+        elif args.model_type == 'core' or args.model_type == 'llama':
+            model_path = 'results/core_results/best_model'
+        else:  # sota
+            model_path = None
+        
         generator = NarrationGenerator(
-            model_path=args.lm_model_path if args.model_type != 'sota' else None,
+            model_path=model_path,
             device=args.device,
             model_type=args.model_type
         )

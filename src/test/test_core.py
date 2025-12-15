@@ -49,34 +49,39 @@ def load_core_model(config_path, best_model_path):
     return model, tokenizer, device
 
 
-def generate_response(model, tokenizer, device, prompt, max_length=150, temperature=0.7):
-    """Generate response using the Core model (matching training format)"""
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512).to(device)
+def generate_response(model, tokenizer, device, prompt, max_new_tokens=100, temperature=0.7, debug=False):
+    """Generate response using TinyLlama with correct chat format"""
     
+    # Format prompt for TinyLlama chat (matching train_llama.py format_prompt)
+    formatted_prompt = f"<|user|>\n{prompt}<|end|>\n<|assistant|>\n"
+    
+    if debug:
+        print(f"\n--- Formatted Prompt ---\n{formatted_prompt}\n------------------------")
+
+    input_ids = tokenizer.encode(formatted_prompt, return_tensors="pt").to(device)
+    
+    # Generate response
     with torch.no_grad():
-        outputs = model.generate(
-            inputs['input_ids'],
-            attention_mask=inputs['attention_mask'],
-            max_length=max_length,  # Use max_length like in training, not max_new_tokens
+        output = model.generate(
+            input_ids,
+            max_new_tokens=max_new_tokens,
             temperature=temperature,
-            top_p=0.9,
-            do_sample=True,
-            pad_token_id=tokenizer.eos_token_id
+            do_sample=True if temperature > 0 else False,
+            pad_token_id=tokenizer.eos_token_id, # Use EOS token as pad_token_id
+            num_return_sequences=1,
+            eos_token_id=tokenizer.eos_token_id
         )
     
-    # Decode the full output (like in training)
-    full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # Decode the generated tokens
+    generated_text = tokenizer.decode(output[0][len(input_ids[0]):], skip_special_tokens=True)
     
-    # Extract only the generated part (everything after the prompt)
-    # The prompt ends where the new generation begins
-    if full_text.startswith(prompt):
-        generated_text = full_text[len(prompt):].strip()
-    else:
-        # Fallback: try to find where prompt ends in the generated text
-        generated_text = full_text.strip()
+    # Clean up the generated text (remove any remaining chat tags if present)
+    generated_text = generated_text.replace("<|end|>", "").strip()
     
+    if debug:
+        print(f"\n--- Generated Response ---\n{generated_text}\n--------------------------")
+        
     return generated_text
-
 
 def load_daily_dialog(base_dir, split='test'):
     """Load DailyDialog data with act and emotion labels (matching training format)"""
@@ -295,7 +300,7 @@ def evaluate_dialog(pairs, model, tokenizer, device, sample_size=100):
                 tokenizer=tokenizer,
                 device=device,
                 prompt=prompt,
-                max_length=150,
+                max_new_tokens=100,
                 temperature=0.7
             )
             end_time = time.time()
@@ -397,7 +402,7 @@ def evaluate_robotics(pairs, model, tokenizer, device, sample_size=50):
                 tokenizer=tokenizer,
                 device=device,
                 prompt=prompt,
-                max_length=200,
+                max_new_tokens=150,
                 temperature=0.3  # Lower temperature for more deterministic outputs
             )
             end_time = time.time()

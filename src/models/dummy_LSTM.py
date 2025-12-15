@@ -83,49 +83,62 @@ class DummyLSTM(nn.Module):
         # Return dict-like object to match transformers API
         return type('Outputs', (), {'loss': loss, 'logits': logits})()
     
-    def generate(self, input_ids, max_length=50, temperature=1.0, top_p=0.9, eos_token_id=None):
+    def generate(self, input_ids, max_new_tokens=50, max_length=None, temperature=1.0, top_p=0.9, 
+                 do_sample=True, pad_token_id=None, repetition_penalty=1.0, **kwargs):
         """
         Simple greedy/sampling generation
         
         Args:
             input_ids: [B, T] starting tokens
-            max_length: Maximum sequence length to generate
+            max_new_tokens: Maximum number of new tokens to generate
+            max_length: (deprecated) use max_new_tokens instead
             temperature: Sampling temperature (higher = more random)
             top_p: Nucleus sampling threshold
-            eos_token_id: Token ID to stop generation
+            do_sample: Whether to use sampling (ignored, always samples)
+            pad_token_id: Token ID for padding (used as eos_token_id)
+            repetition_penalty: Penalty for repeating tokens (ignored for now)
+            **kwargs: Additional arguments (e.g., attention_mask) - ignored
         
         Returns:
-            [B, max_length] generated token IDs
+            [B, generated_length] generated token IDs
         """
         self.eval()
         with torch.no_grad():
             batch_size = input_ids.size(0)
             device = input_ids.device
             
+            # Use max_new_tokens if provided, otherwise fall back to max_length
+            tokens_to_generate = max_new_tokens if max_length is None else (max_length - input_ids.size(1))
+            eos_token_id = pad_token_id  # Use pad_token_id as eos_token_id
+            
             # Start with input tokens
             generated = input_ids
             
-            for _ in range(max_length - input_ids.size(1)):
+            for _ in range(tokens_to_generate):
                 # Get logits for next token
                 outputs = self.forward(generated)
                 next_token_logits = outputs.logits[:, -1, :] / temperature  # [B, vocab_size]
                 
-                # Apply top-p (nucleus) sampling
-                if top_p < 1.0:
-                    sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
-                    cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+                if do_sample:
+                    # Apply top-p (nucleus) sampling
+                    if top_p < 1.0:
+                        sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
+                        cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+                        
+                        # Remove tokens with cumulative probability above threshold
+                        sorted_indices_to_remove = cumulative_probs > top_p
+                        sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
+                        sorted_indices_to_remove[:, 0] = 0
+                        
+                        indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
+                        next_token_logits[indices_to_remove] = float('-inf')
                     
-                    # Remove tokens with cumulative probability above threshold
-                    sorted_indices_to_remove = cumulative_probs > top_p
-                    sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
-                    sorted_indices_to_remove[:, 0] = 0
-                    
-                    indices_to_remove = sorted_indices_to_remove.scatter(1, sorted_indices, sorted_indices_to_remove)
-                    next_token_logits[indices_to_remove] = float('-inf')
-                
-                # Sample next token
-                probs = torch.softmax(next_token_logits, dim=-1)
-                next_token = torch.multinomial(probs, num_samples=1)  # [B, 1]
+                    # Sample next token
+                    probs = torch.softmax(next_token_logits, dim=-1)
+                    next_token = torch.multinomial(probs, num_samples=1)  # [B, 1]
+                else:
+                    # Greedy decoding - take most likely token
+                    next_token = next_token_logits.argmax(dim=-1, keepdim=True)  # [B, 1]
                 
                 # Append to generated sequence
                 generated = torch.cat([generated, next_token], dim=1)
@@ -172,11 +185,12 @@ class DummyLSTM(nn.Module):
             vocab_size=config['vocab_size'],
             embed_dim=config['embed_dim'],
             hidden_dim=config['hidden_dim'],
+            num_layers=config.get('num_layers', 1),  # Default to 1 if not specified
             pad_token_id=config.get('pad_token_id')
         )
         
         # Load weights
         weights_path = os.path.join(load_directory, 'pytorch_model.bin')
-        model.load_state_dict(torch.load(weights_path))
+        model.load_state_dict(torch.load(weights_path, map_location='cpu'))
         
         return model

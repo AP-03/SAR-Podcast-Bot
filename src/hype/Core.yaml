@@ -21,7 +21,7 @@ lora_dropout: 0.1  # Reduced from 0.3 to 0.1 (0.3 might be too aggressive)
 
 # Model Paths (relative to src/ directory)
 output_dir: "results/core_results"
-best_model_path: "results/core_results/gpt2_best_model"
+best_model_path: "results/core_results/best_model"
 final_model_path: "results/core_results/gpt2_final"
 plot_path: "results/core_results/training_curves.png"
 

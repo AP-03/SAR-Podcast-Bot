@@ -310,15 +310,26 @@ class NarrationGenerator:
         input_len = inputs["input_ids"].shape[1]
 
         with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_length,      # <-- key fix (NOT max_length)
-                temperature=temperature,
-                top_p=0.9,
-                repetition_penalty=1.15 if self.model_type == "llama" else 1.0,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
+            # Use moderate sampling for dummy model to get varied output
+            if self.model_type == 'dummy':
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=100,  # Moderate length
+                    temperature=0.7,     # Moderate temperature
+                    top_p=0.9,          # Nucleus sampling
+                    do_sample=True,     # Use sampling for variety
+                    pad_token_id=self.tokenizer.eos_token_id,
+                )
+            else:
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=max_length,
+                    temperature=temperature,
+                    top_p=0.9,
+                    repetition_penalty=1.15 if self.model_type == "llama" else 1.0,
+                    do_sample=True,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                )
 
         # Decode only the newly generated tokens (prevents echoing the prompt)
         gen_ids = outputs[0][input_len:]
